@@ -1,4 +1,5 @@
 Đề tài trang web bán điện thoại.
+Sủ dụng ngôn ngô Backend Flask-Python mô hình MVC
 
 Giao diện thân thiện, dễ sử dụng, chức năng khá đầy đủ.
 
