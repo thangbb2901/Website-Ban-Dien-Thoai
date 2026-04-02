@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Dịch vụ tự động tạo chứng chỉ Bảo mật truyền thông SSL/TLS (Self-signed Certificate)
   ssl_cert_gen:
@@ -18,6 +16,7 @@ services:
       replicas: 3
     environment:
       - FLASK_ENV=development
+      - FLASK_SECRET_KEY=nhom12_secret_key_fixed_2024
     volumes:
       - .:/app
     networks:

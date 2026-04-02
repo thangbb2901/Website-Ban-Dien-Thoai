@@ -19,6 +19,6 @@ COPY . .
 EXPOSE 5000
 
 # Lệnh để chạy ứng dụng khi container khởi động
-# Gunicorn sẽ là WSGI server, chạy 4 workers, bind vào port 5000
+# Gunicorn sẽ là WSGI server, sử dụng eventlet để hộ trợ Socket.IO mượt mà
 # app:app chỉ đến đối tượng 'app' trong file 'app.py'
-CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-k", "eventlet", "--workers", "1", "--bind", "0.0.0.0:5000", "app:app"]

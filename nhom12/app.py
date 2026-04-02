@@ -36,7 +36,8 @@ socketio = SocketIO(app)
 # SỬA ĐỔI: Lấy chuỗi kết nối từ biến môi trường, fallback về SQLite nếu không có
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///database.db')
 
-app.secret_key = secrets.token_hex(16) # Tạo một khóa bí mật ngẫu nhiên
+# Cố định SECRET_KEY để hỗ trợ chạy nhiều replicas (Load Balancing)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'phone_store_secret_key_123')
 # Đường dẫn đến thư mục lưu banner
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 BANNER_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'img', 'banners')
