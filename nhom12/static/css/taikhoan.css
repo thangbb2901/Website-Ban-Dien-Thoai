@@ -1,289 +1,332 @@
-/* Import Google Fonts */
+/* Import Google Fonts  */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* Thiết kế tổng thể cho form tài khoản - GIỮ NGUYÊN LOGIC CŨ */
+/* Hiệu ứng Nền toàn màn hình */
 .containTaikhoan {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, rgba(34, 34, 59, 0.82), rgba(40,138,214,0.18));
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 1000;
     display: flex;
     justify-content: center;
     align-items: center;
-    transform: scale(0); /* GIỮ NGUYÊN LOGIC CŨ */
-    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+    transform: scale(0);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow-y: auto;
-    /* Đậm hơn, tối hơn để che nền */
+    font-family: 'Inter', sans-serif;
 }
 
 .containTaikhoan.active {
     transform: scale(1);
 }
 
+/* Nút đóng (Close Button) */
 .containTaikhoan .close {
     position: absolute;
-    top: 15px; /* GIỮ VỊ TRÍ CŨ */
-    right: 15px; /* GIỮ VỊ TRÍ CŨ */
-    font-size: 24px; /* GIỮ SIZE CŨ */
-    color: #288ad6;
-    background: #f1f5f9;
+    top: 20px;
+    right: 20px;
+    font-size: 28px;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
     border-radius: 50%;
-    width: 38px; /* GIỮ SIZE CŨ */
-    height: 38px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, transform 0.2s;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
 .containTaikhoan .close:hover {
-    background: #ff4d00;
+    background: #ef4444;
     color: #fff;
-    transform: rotate(90deg) scale(1.08);
+    transform: rotate(90deg) scale(1.1);
+    border-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 
-/* Form chính với glassmorphism - GIỮ CẤU TRÚC CŨ */
+/* Khung form kính mờ Glassmorphism */
 .taikhoan {
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 8px 32px rgba(40,138,214,0.13);
-    padding: 38px 28px 32px 28px; /* GIỮ PADDING CŨ */
-    max-width: 400px; /* GIỮ WIDTH CŨ */
-    width: 100%;
-    border: 1.5px solid #e0e7ff;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    padding: 40px 32px 36px 32px;
+    max-width: 420px;
+    width: 90%;
     position: relative;
-    font-family: 'Segoe UI', Arial, sans-serif; /* THÊM FONT MỚI NHƯNG FALLBACK VỀ CŨ */
-    animation: slideUp 0.5s;
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideUp {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(40px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 .taikhoan h1 {
     text-align: center;
-    font-size: 1.6rem; /* GIỮ SIZE CŨ */
-    font-weight: 700; /* GIỮ WEIGHT CŨ */
-    background: linear-gradient(90deg, #288ad6 30%, #00b4d8 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 18px; /* GIỮ MARGIN CŨ */
-    letter-spacing: 0.5px;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
     position: relative;
-}
-
-/* Fallback cho browsers không support background-clip */
-@supports not (-webkit-background-clip: text) {
-    .taikhoan h1 {
-        color: #333;
-        background: none;
-        -webkit-text-fill-color: unset;
-    }
 }
 
 .taikhoan h1::after {
     content: '';
     display: block;
-    margin: 12px auto 0 auto;
-    width: 60px;
-    height: 3px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, #288ad6 30%, #00b4d8 100%);
+    margin: 14px auto 0 auto;
+    width: 48px;
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
 }
 
-/* Tab nhóm với hiệu ứng sliding - GIỮ CẤU TRÚC CŨ */
-/* Trong file doannhom12/static/css/taikhoan.css */
-
+/* Tab chuyển đổi Đăng nhập / Đăng ký */
 .tab-group {
-    list-style: none; /* THÊM DÒNG NÀY */
-    padding: 0;       /* THÊM DÒNG NÀY */
+    list-style: none;
+    padding: 6px;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 22px;
+    margin-bottom: 30px;
     background: #f1f5f9;
-    border-radius: 10px;
-    /* padding: 3px;  <-- Dòng padding này có thể xóa đi vì đã set padding: 0 ở trên và bạn có thể điều chỉnh lại nếu cần */
-    border-bottom: 1.5px solid #bde0fe;
+    border-radius: 14px;
     position: relative;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
 .tab-group li {
     flex: 1;
     text-align: center;
+    z-index: 2;
 }
 
 .tab-group li a {
     display: block;
-    padding: 10px 0;
-    color: #288ad6;
-    font-size: 1rem; /* GIỮ SIZE CŨ */
+    padding: 12px 0;
+    color: #64748b;
+    font-size: 1rem;
     font-weight: 600;
-    border-radius: 8px;
-    transition: background 0.2s, color 0.2s;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    text-decoration: none;
 }
 
-.tab-group li a:hover,
 .tab-group .active a {
-    background: linear-gradient(90deg, #288ad6 30%, #00b4d8 100%);
-    color: #fff !important;
+    color: #3b82f6;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
-/* Nội dung tab */
+.tab-group li a:hover:not(.active a) {
+    color: #0f172a;
+}
+
+/* Nội dung khi đổi Tab */
 .tab-content {
     display: block;
 }
 
 .tab-content > div {
     display: none;
-    animation: fadeInUp 0.5s ease-out;
+    animation: fadeInScale 0.4s ease forwards;
 }
 
 .tab-content > div.active {
     display: block;
 }
 
-@keyframes fadeInUp {
+@keyframes fadeInScale {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: scale(0.98);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: scale(1);
     }
 }
 
-/* Trường nhập liệu - GIỮ CẤU TRÚC CŨ NHƯNG THÊM HIỆU ỨNG */
+/* Các trường Nhập liệu (Floating Label design) */
 .field-wrap {
-    margin-bottom: 20px; /* GIỮ MARGIN CŨ */
     position: relative;
+    margin-bottom: 24px;
+}
+
+.top-row {
+    display: flex;
+    gap: 16px;
+}
+
+.top-row .field-wrap {
+    flex: 1;
 }
 
 .taikhoan label {
-    font-size: 0.98rem;
-    color: #288ad6;
-    font-weight: 600;
-    margin-bottom: 4px;
-    display: block;
+    position: absolute;
+    left: 16px;
+    top: 14px;
+    color: #64748b;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+    pointer-events: none;
+    background: transparent;
+    padding: 0 4px;
+    z-index: 1;
+}
+
+.taikhoan label .req {
+    color: #ef4444;
+}
+
+/* Khi người dùng click vào ô (Focus) hoặc đã nhập dữ liệu, nhãn sẽ bay lên trên góc */
+.taikhoan label.active, .taikhoan label.highlight {
+    top: -10px;
+    left: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #3b82f6;
+    background: #ffffff; /* Che đi phần viền ô input bên dưới */
 }
 
 .taikhoan input {
     width: 100%;
-    padding: 10px 12px;
-    border: 1.5px solid #bde0fe;
-    border-radius: 6px;
+    padding: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
     font-size: 1rem;
-    background: #f8fafc;
-    color: #22223b;
-    margin-bottom: 16px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #ffffff;
+    color: #0f172a;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    font-family: inherit;
 }
 
 .taikhoan input:focus {
-    border-color: #288ad6;
-    box-shadow: 0 0 0 2px #bde0fe;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     outline: none;
-    background: #fff;
 }
 
-/* Nút submit với gradient và hiệu ứng - GIỮ CẤU TRÚC CŨ */
+/* Xóa màu nền auto-fill xấu xí của Chrome */
+.taikhoan input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Nút Submit chính (Glowing Gradient 3D) */
 .taikhoan .button {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(90deg, #288ad6 30%, #00b4d8 100%);
-    color: #fff;
+    padding: 15px;
+    background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+    color: #ffffff;
     border: none;
-    border-radius: 6px;
-    font-size: 1.08rem; /* GIỮ SIZE CŨ */
-    font-weight: 700; /* GIỮ WEIGHT CŨ */
+    border-radius: 12px;
+    font-size: 1.08rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 16px rgba(40,138,214,0.10);
-    margin-top: 8px;
+    transition: all 0.3s ease;
+    margin-top: 16px;
     position: relative;
     overflow: hidden;
     letter-spacing: 0.5px;
+    box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+    font-family: inherit;
 }
 
 .taikhoan .button:hover {
-    background: linear-gradient(90deg, #00b4d8 30%, #288ad6 100%);
-    transform: translateY(-2px) scale(1.03);
-    box-shadow: 0 8px 24px rgba(40,138,214,0.18);
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px -5px rgba(59, 130, 246, 0.5);
 }
 
-.taikhoan .button::before {
+.taikhoan .button:active {
+    transform: translateY(1px);
+    box-shadow: 0 5px 10px -2px rgba(59, 130, 246, 0.4);
+}
+
+/* Chạy tia chớp quét qua thanh khi Hover */
+.taikhoan .button::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
-    transition: left 0.5s;
+    top: -50%;
+    left: -60%;
+    width: 20%;
+    height: 200%;
+    background: rgba(255,255,255,0.3);
+    transform: rotate(30deg);
+    transition: left 0.6s ease;
 }
 
-.taikhoan .button:hover::before {
-    left: 100%;
+.taikhoan .button:hover::after {
+    left: 120%;
 }
 
-/* Liên kết với hiệu ứng underline - GIỮ CẤU TRÚC CŨ */
+/* Text phụ khác (Quên mật khẩu, Quay lại) */
+.forgot, .back-to-login {
+    text-align: right;
+    margin-bottom: 24px;
+    margin-top: -10px;
+}
+
+.back-to-login {
+    text-align: center;
+    margin-top: 24px;
+    margin-bottom: 0;
+}
+
 .forgot a, .back-to-login a {
-    color: #00b4d8;
+    color: #3b82f6;
     text-decoration: none;
-    font-size: 0.97rem; /* GIỮ SIZE CŨ */
+    font-size: 0.95rem;
     font-weight: 500;
-    position: relative;
-    transition: color 0.2s;
+    transition: color 0.3s ease;
 }
 
 .forgot a:hover, .back-to-login a:hover {
-    color: #ff4d00;
+    color: #1e40af;
     text-decoration: underline;
 }
 
-.forgot a::after, .back-to-login a::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    width: 0;
-    height: 2px;
-    background: linear-gradient(135deg, #288ad6, #00b4d8);
-    transition: all 0.3s;
-    transform: translateX(-50%);
+/* Đoạn chữ nhỏ trong quy trình quên m/k */
+.containTaikhoan p {
+    color: #64748b !important;
+    line-height: 1.5;
 }
 
-.forgot a:hover::after, .back-to-login a:hover::after {
-    width: 100%;
-}
-
-/* Responsive Design - GIỮ BREAKPOINT VÀ LOGIC CŨ */
+/* Bố cục Responsive cho Mobile */
 @media (max-width: 480px) {
     .taikhoan {
-        padding: 18px 6vw 22px 6vw;
-        max-width: 98vw;
+        padding: 32px 24px;
+        border-radius: 20px;
     }
     
     .tab-group li a {
-        font-size: 0.97rem;
-        padding: 8px 0;
+        font-size: 0.95rem;
+        padding: 10px 0;
     }
     
     .taikhoan h1 {
-        font-size: 1.15rem;
+        font-size: 1.5rem;
+    }
+    
+    .top-row {
+        flex-direction: column;
+        gap: 0;
     }
 }

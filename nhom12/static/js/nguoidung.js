@@ -41,6 +41,7 @@ async function khoiTaoTrangNguoiDung() {
         if (response.ok) {
             user = await response.json();
             setCurrentUser(user); // Cập nhật lại localStorage
+            if (typeof capNhat_ThongTin_CurrentUser === "function") capNhat_ThongTin_CurrentUser();
         }
     } catch (e) {
         // Nếu lỗi thì vẫn dùng localStorage
@@ -68,16 +69,41 @@ function hienThiThongTinNguoiDung(user) {
     const infoDiv = document.getElementById('info');
     if (!infoDiv || !user) return;
 
+    const trangThai = user.off
+        ? `<span style="color:#dc2626;"><i class="fa fa-lock"></i> Bị khóa</span>`
+        : `<span style="color:#059669;"><i class="fa fa-check-circle"></i> Hoạt động</span>`;
+
     infoDiv.innerHTML = `
-        <h2>Thông tin tài khoản</h2>
-        <table>
-            <tr><th>Tên đăng nhập</th><td>${user.username || 'Chưa cập nhật'}</td></tr>
-            <tr><th>Họ</th><td>${user.ho || 'Chưa cập nhật'}</td></tr>
-            <tr><th>Tên</th><td>${user.ten || 'Chưa cập nhật'}</td></tr>
-            <tr><th>Email</th><td>${user.email || 'Chưa cập nhật'}</td></tr>
-        </table>
+        <h2><i class="fa fa-id-card-o"></i> Thông tin tài khoản</h2>
+        <div class="user-info-card">
+            <div class="info-row">
+                <div class="info-label"><i class="fa fa-user"></i> Tên đăng nhập</div>
+                <div class="info-value">${user.username || 'Chưa cập nhật'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="fa fa-font"></i> Họ và tên</div>
+                <div class="info-value">${(user.ho || '') + ' ' + (user.ten || '') || 'Chưa cập nhật'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="fa fa-envelope"></i> Gmail</div>
+                <div class="info-value">${user.email || 'Chưa cập nhật'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="fa fa-map-marker"></i> Địa chỉ</div>
+                <div class="info-value">${user.address || 'Chưa cập nhật'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="fa fa-shield"></i> Trạng thái</div>
+                <div class="info-value">${trangThai}</div>
+            </div>
+        </div>
         <div class="user-action">
-            <button class="button" onclick="chinhSuaThongTin()">Chỉnh sửa thông tin</button>
+            <button class="button edit-info-btn" onclick="chinhSuaThongTin()">
+                <i class="fa fa-pencil"></i> Chỉnh sửa thông tin
+            </button>
+            <button class="button edit-info-btn" onclick="openChangePasswordModal()">
+                <i class="fa fa-lock"></i> Đổi mật khẩu
+            </button>
         </div>
     `;
 }
@@ -129,19 +155,21 @@ async function hienThiLichSuDonHang(user) {
     // Tạo bảng nếu chưa có
     if (!orderListTbody) {
         orderDiv.innerHTML = `
-            <h2>Lịch sử đơn hàng</h2>
+            <h2><i class="fa fa-history"></i> Lịch sử đơn hàng</h2>
+            <div style="overflow-x:auto;">
             <table>
                 <thead>
                     <tr>
-                        <th>Mã đơn hàng</th>
-                        <th>Ngày mua</th>
-                        <th>Sản phẩm (SL)</th>
-                        <th>Tổng tiền</th>
-                        <th>Trạng thái</th>
+                        <th><i class="fa fa-hashtag"></i> Mã đơn</th>
+                        <th><i class="fa fa-calendar"></i> Ngày mua</th>
+                        <th><i class="fa fa-cube"></i> Sản phẩm</th>
+                        <th><i class="fa fa-money"></i> Tổng tiền</th>
+                        <th><i class="fa fa-info-circle"></i> Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody id="order-list"></tbody>
             </table>
+            </div>
         `;
         orderListTbody = document.getElementById('order-list');
     }
@@ -168,10 +196,11 @@ async function hienThiLichSuDonHang(user) {
         if (!orders || orders.length === 0) {
             orderListTbody.innerHTML = `
                 <tr>
-                    <td colspan="5">
-                        <h3 style="color:gray; text-align:center; padding: 15px 0;">
-                            Chưa có đơn hàng nào!
-                        </h3>
+                    <td colspan="5" style="text-align:center; padding: 48px 20px;">
+                        <div style="color:#94a3b8; font-size:1.1rem;">
+                            <i class="fa fa-inbox" style="font-size:2.5rem; display:block; margin-bottom:12px;"></i>
+                            Bạn chưa có đơn hàng nào!
+                        </div>
                     </td>
                 </tr>`;
             return;
@@ -284,8 +313,53 @@ function chinhSuaThongTin() {
     tenInput.value = user.ten || '';
     emailInput.value = user.email || '';
 
+    // Khởi tạo bộ chọn địa chỉ và điền dữ liệu nếu có
+    if (typeof loadProvinces === 'function') {
+        loadProvinces('user-').then(() => {
+            if (user.address) {
+                const parts = user.address.split(', ').map(p => p.trim());
+                if (parts.length >= 4) {
+                    const street = parts[0];
+                    const wardName = parts[1];
+                    const districtName = parts[2];
+                    const provinceName = parts[3];
+
+                    document.getElementById('user-street').value = street;
+
+                    // Tìm và chọn Tỉnh/Thành
+                    const provinceSelect = document.getElementById('user-province');
+                    for (let i = 0; i < provinceSelect.options.length; i++) {
+                        if (provinceSelect.options[i].text === provinceName) {
+                            provinceSelect.selectedIndex = i;
+                            loadDistricts(provinceSelect.value, 'user-').then(() => {
+                                // Tìm và chọn Quận/Huyện
+                                const districtSelect = document.getElementById('user-district');
+                                for (let j = 0; j < districtSelect.options.length; j++) {
+                                    if (districtSelect.options[j].text === districtName) {
+                                        districtSelect.selectedIndex = j;
+                                        loadWards(districtSelect.value, 'user-').then(() => {
+                                            // Tìm và chọn Phường/Xã
+                                            const wardSelect = document.getElementById('user-ward');
+                                            for (let k = 0; k < wardSelect.options.length; k++) {
+                                                if (wardSelect.options[k].text === wardName) {
+                                                    wardSelect.selectedIndex = k;
+                                                    break;
+                                                }
+                                            }
+                                        });
+                                        break;
+                                    }
+                                }
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     modal.style.display = 'flex';
-    // Nếu có animation, thêm class active
     setTimeout(() => modal.classList.add('active'), 10);
 }
 
@@ -313,59 +387,190 @@ async function saveUserInfo(event) {
     const hoInput = document.getElementById('ho');
     const tenInput = document.getElementById('ten');
     const emailInput = document.getElementById('email');
-    const newPasswordInput = document.getElementById('newPassword');
 
     // Validate dữ liệu nếu cần...
 
-    // Gửi cập nhật họ, tên, email
+    // Thu thập địa chỉ
+    let fullAddress = "";
+    const p = document.getElementById('user-province');
+    const d = document.getElementById('user-district');
+    const w = document.getElementById('user-ward');
+    const s = document.getElementById('user-street');
+    
+    if (p && p.value && d && d.value && w && w.value && s && s.value.trim()) {
+        fullAddress = `${s.value.trim()}, ${w.options[w.selectedIndex].text}, ${d.options[d.selectedIndex].text}, ${p.options[p.selectedIndex].text}`;
+    }
+
     const dataToUpdate = {
         ho: hoInput.value.trim(),
         ten: tenInput.value.trim(),
-        email: emailInput.value.trim()
+        email: emailInput.value.trim(),
+        address: fullAddress
     };
 
     try {
-        // Nếu có nhập mật khẩu mới, gọi API đổi mật khẩu trước
-        const newPassword = newPasswordInput && newPasswordInput.value.trim();
-        if (newPassword) {
-            if (newPassword.length < 6) {
-                addAlertBox('Mật khẩu mới phải có ít nhất 6 ký tự!', '#ff0000', '#fff', 3000);
-                return;
-            }
-            const resPass = await fetch(`/api/reset-password/${user.username}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pass: newPassword })
-            });
-            const dataPass = await resPass.json();
-            if (!resPass.ok) {
-                addAlertBox(dataPass.error || 'Đổi mật khẩu thất bại!', '#ff0000', '#fff', 3000);
-                return;
-            }
-        }
-
-        // Gửi cập nhật thông tin cá nhân
         const response = await fetch(`/api/users/${user.username}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToUpdate)
         });
-        if (!response.ok) throw new Error('Cập nhật thất bại');
-        const updatedUser = await response.json();
+        const responseData = await response.json();
+        if (!response.ok) {
+            throw new Error(responseData.error || 'Cập nhật thất bại');
+        }
+        const updatedUser = responseData;
 
         setCurrentUser(updatedUser);
         hienThiThongTinNguoiDung(updatedUser);
         closeEditInfoModal();
         addAlertBox('Cập nhật thông tin thành công!', '#28a745', '#fff', 3000);
-
-        // Nếu có đổi mật khẩu, đăng xuất user để bảo mật
-        if (newPassword) {
-            setTimeout(() => {
-                logOut();
-            }, 1200);
-        }
     } catch (error) {
-        addAlertBox('Cập nhật thất bại!', '#ff0000', '#fff', 3000);
+        addAlertBox(error.message || 'Cập nhật thất bại!', '#ff0000', '#fff', 3000);
+    }
+}
+
+function openChangePasswordModal() {
+    const user = getCurrentUser();
+    const modal = document.getElementById('changePasswordModal');
+    const verifyEmailInput = document.getElementById('verifyEmail');
+    if (!user || !modal || !verifyEmailInput) return;
+
+    if (!user.email) {
+        addAlertBox('Bạn cần cập nhật Gmail trước khi đổi mật khẩu.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    resetChangePasswordForm();
+    verifyEmailInput.value = user.email || '';
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+}
+
+function closeChangePasswordModal() {
+    const modal = document.getElementById('changePasswordModal');
+    if (!modal) return;
+
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        resetChangePasswordForm();
+    }, 300);
+}
+
+function resetChangePasswordForm() {
+    const form = document.getElementById('changePasswordForm');
+    const otpInput = document.getElementById('emailOtp');
+    const newPasswordInput = document.getElementById('changeNewPassword');
+    const confirmPasswordInput = document.getElementById('confirmChangeNewPassword');
+
+    if (form) form.reset();
+    [otpInput, newPasswordInput, confirmPasswordInput].forEach(input => {
+        if (input) {
+            input.disabled = true;
+            input.value = '';
+        }
+    });
+}
+
+async function sendPasswordChangeOtp() {
+    const user = getCurrentUser();
+    const verifyEmailInput = document.getElementById('verifyEmail');
+    const otpInput = document.getElementById('emailOtp');
+    const newPasswordInput = document.getElementById('changeNewPassword');
+    const confirmPasswordInput = document.getElementById('confirmChangeNewPassword');
+
+    if (!user || !verifyEmailInput) return;
+
+    const enteredEmail = verifyEmailInput.value.trim().toLowerCase();
+    const currentEmail = (user.email || '').trim().toLowerCase();
+
+    if (!currentEmail) {
+        addAlertBox('Tài khoản này chưa có Gmail để xác thực.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    if (!enteredEmail) {
+        addAlertBox('Bạn phải nhập Gmail hiện tại để nhận mã xác thực.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    if (enteredEmail !== currentEmail) {
+        addAlertBox('Gmail nhập vào không khớp với Gmail hiện tại của tài khoản.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/users/${user.username}/password-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: enteredEmail })
+        });
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.error || 'Không gửi được mã xác thực.');
+        }
+
+        [otpInput, newPasswordInput, confirmPasswordInput].forEach(input => {
+            if (input) input.disabled = false;
+        });
+
+        if (otpInput) otpInput.focus();
+        addAlertBox('Mã xác thực đã được gửi về Gmail của bạn.', '#28a745', '#fff', 4000);
+    } catch (error) {
+        addAlertBox(error.message || 'Không gửi được mã xác thực.', '#ff0000', '#fff', 4000);
+    }
+}
+
+async function submitPasswordChange(event) {
+    event.preventDefault();
+
+    const user = getCurrentUser();
+    const verifyEmailInput = document.getElementById('verifyEmail');
+    const otpInput = document.getElementById('emailOtp');
+    const newPasswordInput = document.getElementById('changeNewPassword');
+    const confirmPasswordInput = document.getElementById('confirmChangeNewPassword');
+
+    if (!user || !verifyEmailInput || !otpInput || !newPasswordInput || !confirmPasswordInput) return;
+
+    const enteredEmail = verifyEmailInput.value.trim().toLowerCase();
+    const enteredOtp = otpInput.value.trim();
+    const newPassword = newPasswordInput.value.trim();
+    const confirmPassword = confirmPasswordInput.value.trim();
+
+    if (newPassword.length < 6) {
+        addAlertBox('Mật khẩu mới phải có ít nhất 6 ký tự.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        addAlertBox('Xác nhận mật khẩu không khớp.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/users/${user.username}/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: enteredEmail,
+                otp: enteredOtp,
+                pass: newPassword
+            })
+        });
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.error || 'Đổi mật khẩu thất bại.');
+        }
+
+        closeChangePasswordModal();
+        addAlertBox('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.', '#28a745', '#fff', 4000);
+        setTimeout(() => {
+            logOut();
+        }, 1200);
+    } catch (error) {
+        addAlertBox(error.message || 'Đổi mật khẩu thất bại.', '#ff0000', '#fff', 4000);
     }
 }
 

@@ -1,12 +1,39 @@
-/* Banner */
+/* =============================================
+   BANNER.CSS - TGDD-INSPIRED HERO BANNER
+   ============================================= */
+
 .banner {
-    background-color: #ffffff; /* A clean white background. Alternatively, a very light grey like #f8f9fa could work well. */
-    padding: 20px 0;        /* Increased vertical padding for better spacing. Horizontal padding is 0, assuming content inside (like a carousel) might span full width. */
-    border-bottom: 1px solid #dee2e6; /* A softer, more modern border color. */
-    /* Uncomment the line below if you'd like a subtle shadow to lift the banner slightly: */
-    /* box-shadow: 0 2px 4px rgba(0,0,0,0.05); */
-    width: 100%;             /* Ensures the banner spans the full width of its parent container. */
-    margin-bottom: 20px;     /* Adds some space between the banner and the content that follows. */
-    box-sizing: border-box;  /* Ensures padding and border don't add to the overall width, which is good practice. */
+    width: 100%;
+    margin: 12px 0 16px;
+    padding: 0;
+    background: transparent;
 }
-/* ======= End Banner ======== */
+
+.banner .owl-carousel {
+    background: #fff;
+    border: 1px solid var(--tgdd-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.banner .item a,
+.banner .item img {
+    display: block;
+    width: 100%;
+}
+
+.banner .owl-dots {
+    padding: 10px 0 12px;
+}
+
+.banner .owl-theme .owl-dots .owl-dot span {
+    width: 10px;
+    height: 10px;
+    background: #d7d7d7;
+}
+
+.banner .owl-theme .owl-dots .owl-dot.active span,
+.banner .owl-theme .owl-dots .owl-dot:hover span {
+    background: #8ea39b;
+}

@@ -1,102 +1,144 @@
-/* Top Navigation */
-.top-nav {
-    display: flex; /* Sử dụng flexbox để căn chỉnh */
-    justify-content: center; /* Căn giữa */
-    align-items: center; /* Căn giữa theo chiều dọc */
-    background: linear-gradient(90deg, #f9d423 0%, #ff4e50 100%); /* Màu nền tối */
-    width: 100%;
-    padding: 18px 20px 10px 20px; /* Padding cho thoáng */
-    border-bottom: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Bóng đổ */
+/* =============================================
+   TOPNAV.CSS - TGDD-INSPIRED CATEGORY BAR
+   ============================================= */
+
+.main-navbar {
+    background: var(--tgdd-yellow);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
+    z-index: 650;
 }
 
-/* Căn giữa cho các phần tử trong topnav */
-.topnav-center {
+.navbar-inner {
+    max-width: 1200px;
+    min-height: 46px;
+    margin: 0 auto;
+    padding: 0 12px;
     display: flex;
-    align-items: center;
-    gap: 30px;
-}
-
-/* Đoạn mã mới được thêm vào theo yêu cầu */
-.topnav-center-vertical {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    gap: 10px;
-}
-/* ======= End Đoạn mã mới ======= */
-
-/* Social Icon Container - Căn trái hoàn toàn */
-.social-top-nav {
-    display: flex; /* Sử dụng flex */
-    gap: 18px; /* Khoảng cách giữa các icon */
-    align-items: center; /* Căn giữa theo chiều dọc */
-    margin-bottom: 2px;
-}
-
-.social-top-nav a {
-    padding: 4px;
-    font-size: 16px;      /* Giảm kích thước icon */
-    height: 1.8em;        /* Giảm chiều cao vòng tròn */
-    width: 1.8em;         /* Giảm chiều rộng vòng tròn */
-    line-height: 1.8em;   /* Căn giữa icon */
-    color: #fff;
-    background: #222;
-    border-radius: 50%;
-    transition: background 0.2s, color 0.2s, transform 0.2s;
-    display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
 }
 
-/* Hiệu ứng hover cho icon */
-.social-top-nav a:hover { 
-    color: #fff; 
-    background: #ff4e50;
-    transform: scale(1.1); /* Phóng to nhẹ */
-}
-.fa-facebook:hover { background: #3B5998 !important; }
-.fa-twitter:hover { background: #55ACEE !important; }
-.fa-google:hover { background: #DB4437 !important; }
-.fa-youtube:hover { background: #bb0000 !important; }
-/* ======= End Social Icon ======= */
-/* THÊM ĐOẠN NÀY VÀO */
-/* Quick Link */
-.top-nav-quicklink {
-    display: flex; /* Sử dụng flex */
-    gap: 18px; /* Khoảng cách giữa các link */
-    align-items: center;
+.navbar-links {
+    list-style: none;
+    display: flex;
+    align-items: stretch;
     justify-content: center;
+    width: 100%;
     margin: 0;
     padding: 0;
-    list-style: none;
+    gap: 2px;
 }
 
-.top-nav-quicklink li {
-    font-size: 1em;
-    color: #c2de5a; /* Màu chữ sáng */
+.navbar-links li {
+    display: flex;
+    position: relative;
 }
 
-.top-nav-quicklink li a {
-    color: #222; /* Màu chữ */
-    font-weight: 500;
-    font-size: 1.08em;
-    padding: 6px 14px; /* Padding */
-    border-radius: 18px;
-    text-decoration: none;
-    transition: background 0.2s, color 0.2s;
-    background: rgba(255,255,255,0.7);
+.navbar-links li a {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 13px;
+    color: #252525;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
 }
 
-.top-nav-quicklink li a:hover {
-    background: #ff4e50;
-    color: #fff;
-    border-bottom: none; /* Bỏ viền dưới */
+.navbar-links li a i {
+    font-size: 16px;
 }
 
-.top-nav-quicklink li a:hover i {
-    color: #fff; /* Màu icon hover */
+.navbar-links li a:hover {
+    background: rgba(255, 255, 255, 0.36);
+    border-bottom-color: var(--tgdd-blue);
 }
-/* ======= End Quick Link ======= */
-/* ======= End Top Navigation ======= */
+
+.nav-brand-picker .fa-angle-down {
+    font-size: 14px;
+}
+
+.nav-brand-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 220px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid var(--tgdd-border);
+    border-radius: 14px;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.14);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    z-index: 900;
+}
+
+.nav-brand-picker:hover .nav-brand-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.nav-brand-menu a {
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: #f8fafc;
+    color: var(--tgdd-text);
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: none !important;
+}
+
+.nav-brand-menu a:hover {
+    background: #edf6ff !important;
+    color: var(--tgdd-blue);
+}
+
+@media (max-width: 768px) {
+    .main-navbar {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .navbar-inner {
+        min-height: 44px;
+        padding: 0;
+        justify-content: flex-start;
+    }
+
+    .navbar-links {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+        width: auto;
+    }
+
+    .navbar-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    .navbar-links li a {
+        padding: 0 11px;
+        font-size: 13px;
+    }
+
+    .nav-brand-menu {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        top: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

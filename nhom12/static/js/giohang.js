@@ -1,6 +1,42 @@
 // doannhom12/js/giohang.js
 var currentuser; // User hiện tại, biến toàn cục
 
+function getCartStockIssues(user) {
+    const issues = [];
+    if (!user || !Array.isArray(user.products) || !Array.isArray(window.list_products)) return issues;
+
+    user.products.forEach(item => {
+        const product = timKiemTheoMa(window.list_products, item.ma);
+        if (!product) {
+            issues.push({
+                ma: item.ma,
+                type: 'missing',
+                message: `Sản phẩm mã ${item.ma} không còn tồn tại.`
+            });
+            return;
+        }
+
+        const stock = Number(product.quantity) || 0;
+        const quantityInCart = Number(item.soluong) || 0;
+
+        if (stock <= 0) {
+            issues.push({
+                ma: item.ma,
+                type: 'out_of_stock',
+                message: `${product.name} đã hết hàng.`
+            });
+        } else if (quantityInCart > stock) {
+            issues.push({
+                ma: item.ma,
+                type: 'exceeds_stock',
+                message: `${product.name} chỉ còn ${stock} máy, nhưng giỏ đang có ${quantityInCart}.`
+            });
+        }
+    });
+
+    return issues;
+}
+
 window.onload = async function () {
     try {
         await khoiTao(); // Đợi khoiTao() (từ dungchung.js) hoàn thành
@@ -67,84 +103,84 @@ window.onload = async function () {
 }
 
 function addProductToTable(user) {
-    var tbody = document.getElementById('cartItems');
+    var cartItemsDiv = document.getElementById('cartItems');
+    var subtotalPriceElement = document.getElementById('subtotalPrice');
     var totalPriceElement = document.getElementById('totalPrice');
     var s = '';
 
-    if (!tbody || !totalPriceElement) {
-        console.error("Không tìm thấy phần tử tbody hoặc totalPriceElement.");
+    if (!cartItemsDiv || !totalPriceElement) {
+        console.error("Không tìm thấy phần tử cartItems hoặc totalPriceElement.");
         return;
     }
 
-    if (!user) {
-        s = `<tr><td colspan="7"><h1 style="color:red; background-color:white; font-weight:bold; text-align:center; padding: 15px 0;">Bạn chưa đăng nhập !!</h1></td></tr>`;
-        tbody.innerHTML = s;
-        totalPriceElement.innerHTML = '0 ₫';
-        return;
-    }
-
-    if (!user.products || user.products.length === 0) {
-        s = `<tr><td colspan="7"><h1 style="color:green; background-color:white; font-weight:bold; text-align:center; padding: 15px 0;">Giỏ hàng trống !!</h1></td></tr>`;
-        tbody.innerHTML = s;
+    if (!user || !user.products || user.products.length === 0) {
+        cartItemsDiv.innerHTML = `
+            <div class="empty-cart">
+                <i class="fa fa-shopping-basket"></i>
+                <p>Giỏ hàng của bạn đang trống</p>
+                <a href="/" class="btn-go-shopping">Tiếp tục mua sắm</a>
+            </div>`;
+        if (subtotalPriceElement) subtotalPriceElement.innerHTML = '0 ₫';
         totalPriceElement.innerHTML = '0 ₫';
         return;
     }
 
     var totalPrice = 0;
-    let hasMissingProductInfo = false;
     for (var i = 0; i < user.products.length; i++) {
         var maspTrongGio = user.products[i].ma;
         var soluongSp = user.products[i].soluong;
         var p = timKiemTheoMa(window.list_products, maspTrongGio);
 
-        if (!p) {
-            console.warn(`Sản phẩm với mã ${maspTrongGio} không tồn tại trong window.list_products.`);
-            s += `<tr>
-                    <td>${i + 1}</td>
-                    <td colspan="5" style="text-align:left; color:red;">Không tìm thấy thông tin cho sản phẩm mã: ${maspTrongGio}</td>
-                    <td class="noPadding"><i class="fa fa-trash-o" onclick="xoaSanPhamTrongGioHang(${i})"></i></td> </tr>`;
-            hasMissingProductInfo = true;
-            continue;
-        }
+        if (!p) continue;
 
         var productPrice = (p.promo && p.promo.name && p.promo.name.toLowerCase() == 'giareonline' ? p.promo.value : p.price);
-        var thoigian = user.products[i].date ? new Date(user.products[i].date).toLocaleString('vi-VN') : 'Không rõ';
-        var thanhtien = stringToNum(productPrice) * soluongSp;
+        var priceNum = stringToNum(productPrice);
+        var thanhtien = priceNum * soluongSp;
+        totalPrice += thanhtien;
+        const stock = Number(p.quantity) || 0;
+        const stockWarning = stock <= 0
+            ? `<div style="color:#dc2626; font-weight:700; margin-top:6px;">Hết hàng</div>`
+            : (soluongSp > stock
+                ? `<div style="color:#dc2626; font-weight:700; margin-top:6px;">Chỉ còn ${stock} máy trong kho</div>`
+                : `<div style="color:#059669; font-weight:600; margin-top:6px;">Còn ${stock} máy</div>`);
 
-        // SỬA ĐỔI ĐƯỜNG DẪN CHI TIẾT SẢN PHẨM Ở ĐÂY:
-        // Giả sử bạn có route /chitietsanpham trong Flask
-        var linkChiTiet = `/chitietsanpham?masp=${p.masp}`;
-
-        // QUAN TRỌNG: Đường dẫn p.img phải đúng định dạng /static/img/products/tenfile.jpg
-        // Điều này cần được đảm bảo từ window.list_products hoặc hàm khoiTao/addProduct
-        // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH Ở ĐÂY:
         var hinhAnhSrc = p.img && p.img.startsWith('/static/') ? p.img : (p.img ? `/static/img/products/${p.img}` : '/static/img/default_product.png');
-        // Dòng trên cố gắng sửa p.img nếu nó chưa có /static/img/products/. Tốt nhất là p.img đã đúng sẵn.
 
         s += `
-            <tr>
-                <td>${i + 1}</td>
-                <td class="noPadding imgHide">
-                    <a target="_blank" href="${linkChiTiet}" title="Xem chi tiết">
-                        ${p.name}
-                        <img src="${hinhAnhSrc}" alt="${p.name || 'Hình sản phẩm'}">
-                    </a>
-                </td>
-                <td class="alignRight">${productPrice} ₫</td>
-                <td class="soluong">
-                    <button class="decrease" onclick="giamSoLuong('${maspTrongGio}')">−</button>
-                    <input size="1" onchange="capNhatSoLuongFromInput(this, '${maspTrongGio}')" value="${soluongSp}">
-                    <button class="increase" onclick="tangSoLuong('${maspTrongGio}')">+</button>
-                </td>
-                <td class="alignRight">${numToString(thanhtien)} ₫</td>
-                <td style="text-align: center">${thoigian}</td>
-                <td class="noPadding"><i class="fa fa-trash-o" onclick="xoaSanPhamTrongGioHang(${i})"></i></td> </tr>`;
-
-        totalPrice += thanhtien;
+            <div class="cart-item-card">
+                <div class="item-img">
+                    <img src="${hinhAnhSrc}" alt="${p.name}">
+                </div>
+                <div class="item-info">
+                    <h4 class="item-name"><a href="/chitietsanpham?masp=${p.masp}">${p.name}</a></h4>
+                    <div class="item-price">${productPrice} ₫</div>
+                    ${stockWarning}
+                </div>
+                <div class="item-qty">
+                    <div class="qty-controls">
+                        <button onclick="giamSoLuong('${maspTrongGio}')">−</button>
+                        <input type="text" readonly value="${soluongSp}">
+                        <button onclick="tangSoLuong('${maspTrongGio}')">+</button>
+                    </div>
+                </div>
+                <div class="item-total">
+                    <span>Thành tiền:</span>
+                    <strong>${numToString(thanhtien)} ₫</strong>
+                </div>
+                <button class="btn-remove" onclick="xoaSanPhamTrongGioHang(${i})" title="Xóa">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>`;
     }
 
-    tbody.innerHTML = s;
+    cartItemsDiv.innerHTML = s;
+    if (subtotalPriceElement) subtotalPriceElement.innerHTML = numToString(totalPrice) + ' ₫';
     totalPriceElement.innerHTML = numToString(totalPrice) + ' ₫';
+
+    const stockIssues = getCartStockIssues(user);
+    if (stockIssues.length > 0 && typeof addAlertBox === "function") {
+        addAlertBox(stockIssues[0].message, '#ff0000', '#fff', 3500);
+    }
 
     if (hasMissingProductInfo && typeof addAlertBox === "function") {
         addAlertBox('Một vài sản phẩm trong giỏ hàng không tìm thấy thông tin chi tiết. Chúng có thể đã bị xóa.', '#ff8c00', '#000', 7000);
@@ -168,7 +204,6 @@ function showCheckoutForm() {
         return;
     }
     if (c_user.off) {
-        alert('Tài khoản của bạn hiện đang bị khóa nên không thể mua hàng!');
         if (typeof addAlertBox === "function") addAlertBox('Tài khoản của bạn đã bị khóa bởi Admin.', '#aa0000', '#fff', 10000);
         return;
     }
@@ -178,23 +213,67 @@ function showCheckoutForm() {
         return;
     }
 
+    const stockIssues = getCartStockIssues(currentuser);
+    if (stockIssues.length > 0) {
+        if (typeof addAlertBox === "function") addAlertBox(stockIssues[0].message, '#ff0000', '#fff', 4500);
+        return;
+    }
+
     const checkoutForm = document.getElementById('checkoutForm');
     if (checkoutForm) {
         checkoutForm.style.display = 'flex';
         const fullNameInput = checkoutForm.querySelector('input[name="fullName"]');
         const emailInput = checkoutForm.querySelector('input[name="email"]');
+        const streetInput = checkoutForm.querySelector('input[name="street"]');
 
         if (fullNameInput && c_user.ho && c_user.ten) {
             fullNameInput.value = `${c_user.ho} ${c_user.ten}`;
-        } else if (fullNameInput) {
-            fullNameInput.value = ''; // Xóa nếu không có thông tin
         }
         if (emailInput && c_user.email) {
             emailInput.value = c_user.email;
-        } else if (emailInput) {
-            emailInput.value = ''; // Xóa nếu không có thông tin
         }
-        // Gọi hienThiChiTietThanhToan để cập nhật hiển thị dựa trên lựa chọn mặc định
+        
+        // Tự động điền địa chỉ nếu có
+        loadProvinces().then(() => {
+            if (c_user.address) {
+                const parts = c_user.address.split(', ').map(p => p.trim());
+                if (parts.length >= 4) {
+                    const street = parts[0];
+                    const wardName = parts[1];
+                    const districtName = parts[2];
+                    const provinceName = parts[3];
+
+                    if (streetInput) streetInput.value = street;
+
+                    const provinceSelect = document.getElementById('province');
+                    for (let i = 0; i < provinceSelect.options.length; i++) {
+                        if (provinceSelect.options[i].text === provinceName) {
+                            provinceSelect.selectedIndex = i;
+                            loadDistricts(provinceSelect.value).then(() => {
+                                const districtSelect = document.getElementById('district');
+                                for (let j = 0; j < districtSelect.options.length; j++) {
+                                    if (districtSelect.options[j].text === districtName) {
+                                        districtSelect.selectedIndex = j;
+                                        loadWards(districtSelect.value).then(() => {
+                                            const wardSelect = document.getElementById('ward');
+                                            for (let k = 0; k < wardSelect.options.length; k++) {
+                                                if (wardSelect.options[k].text === wardName) {
+                                                    wardSelect.selectedIndex = k;
+                                                    break;
+                                                }
+                                            }
+                                        });
+                                        break;
+                                    }
+                                }
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
         hienThiChiTietThanhToan();
     }
 }
@@ -205,36 +284,18 @@ function hideCheckoutForm() {
 }
 
 function hienThiChiTietThanhToan() {
-    var paymentMethodSelect = document.getElementById('paymentMethod');
-    if (!paymentMethodSelect) return; // Thoát nếu không tìm thấy select
-
     var qrPaymentDiv = document.getElementById('qrPaymentDetails');
     var visaPaymentDiv = document.getElementById('visaPaymentDetails');
-    var visaInputs = visaPaymentDiv ? visaPaymentDiv.querySelectorAll('input') : [];
+    var selectedMethodElement = document.querySelector('input[name="paymentMethod"]:checked');
+    
+    if (!selectedMethodElement) return;
+    var selectedMethod = selectedMethodElement.value;
 
-    if (qrPaymentDiv) qrPaymentDiv.style.display = 'none';
+    if (qrPaymentDiv) qrPaymentDiv.style.display = (selectedMethod === 'transfer') ? 'block' : 'none';
     if (visaPaymentDiv) {
-        visaPaymentDiv.style.display = 'none';
-        visaInputs.forEach(input => input.required = false);
-    }
-
-    var selectedMethod = paymentMethodSelect.value;
-
-    if (selectedMethod === 'transfer') {
-        if (qrPaymentDiv) qrPaymentDiv.style.display = 'block';
-    } else if (selectedMethod === 'card') {
-        if (visaPaymentDiv) {
-            visaPaymentDiv.style.display = 'block';
-            const cardNumber = document.getElementById('cardNumber');
-            const expiryDate = document.getElementById('expiryDate');
-            const cvv = document.getElementById('cvv');
-            const cardHolderName = document.getElementById('cardHolderName');
-
-            if(cardNumber) cardNumber.required = true;
-            if(expiryDate) expiryDate.required = true;
-            if(cvv) cvv.required = true;
-            if(cardHolderName) cardHolderName.required = true;
-        }
+        visaPaymentDiv.style.display = (selectedMethod === 'card') ? 'block' : 'none';
+        var visaInputs = visaPaymentDiv.querySelectorAll('input');
+        visaInputs.forEach(input => input.required = (selectedMethod === 'card'));
     }
 }
 
@@ -256,16 +317,34 @@ async function thanhToan(form) {
         return false;
     }
 
+    const stockIssues = getCartStockIssues(currentuser);
+    if (stockIssues.length > 0) {
+        if (typeof addAlertBox === "function") addAlertBox(stockIssues[0].message, '#ff0000', '#fff', 4500);
+        return false;
+    }
+
     const tenNguoiNhan = form.elements.fullName.value.trim();
     const sdtNguoiNhan = form.elements.phone.value.trim(); 
     const emailNguoiNhan = form.elements.email.value.trim();
-    const diaChiNhan = form.elements.address.value.trim();
-    const phuongThucTT = form.elements.paymentMethod.value;
+    
+    const selectedMethodElement = form.querySelector('input[name="paymentMethod"]:checked');
+    const phuongThucTT = selectedMethodElement ? selectedMethodElement.value : 'cash';
 
-    if (!tenNguoiNhan || !sdtNguoiNhan || !emailNguoiNhan || !diaChiNhan) {
-        if (typeof addAlertBox === "function") addAlertBox('Vui lòng điền đầy đủ thông tin bắt buộc (*).', '#ff0000', '#fff', 4000);
+    const streetInput = form.elements.street.value.trim();
+    const provinceSelect = document.getElementById('province');
+    const districtSelect = document.getElementById('district');
+    const wardSelect = document.getElementById('ward');
+
+    const provinceText = provinceSelect.options[provinceSelect.selectedIndex].text;
+    const districtText = districtSelect.options[districtSelect.selectedIndex].text;
+    const wardText = wardSelect.options[wardSelect.selectedIndex].text;
+
+    if (!tenNguoiNhan || !sdtNguoiNhan || !emailNguoiNhan || !provinceSelect.value || !districtSelect.value || !wardSelect.value || !streetInput) {
+        if (typeof addAlertBox === "function") addAlertBox('Vui lòng điền đầy đủ và chọn đủ thông tin địa chỉ.', '#ff0000', '#fff', 4000);
         return false;
     }
+
+    const diaChiNhan = `${streetInput}, ${wardText}, ${districtText}, ${provinceText}`;
 
     const phoneRegex = /^\d{10}$/; 
     if (!phoneRegex.test(sdtNguoiNhan)) {
@@ -405,6 +484,16 @@ function tangSoLuong(masp) {
     if (currentuser && currentuser.products) {
         for (var p of currentuser.products) {
             if (p.ma == masp) {
+                const product = timKiemTheoMa(window.list_products, masp);
+                const stock = product ? (Number(product.quantity) || 0) : 0;
+                if (stock <= 0) {
+                    if (typeof addAlertBox === "function") addAlertBox('Sản phẩm này đã hết hàng.', '#ff0000', '#fff', 3000);
+                    return;
+                }
+                if (p.soluong >= stock) {
+                    if (typeof addAlertBox === "function") addAlertBox(`Chỉ còn ${stock} máy trong kho.`, '#ff0000', '#fff', 3000);
+                    return;
+                }
                 p.soluong++;
                 break;
             }
@@ -438,6 +527,5 @@ function capNhatMoiThu() {
     if (typeof setCurrentUser === 'function' && currentuser) setCurrentUser(currentuser); // chỉ gọi nếu currentuser tồn tại
     if (typeof updateListUser === 'function' && currentuser) updateListUser(currentuser); // chỉ gọi nếu currentuser tồn tại
     addProductToTable(currentuser);
-    // capNhat_ThongTin_CurrentUser có vẻ không được định nghĩa hoặc không cần thiết ở đây nếu addTopNav/addHeader tự cập nhật
-    // if (typeof capNhat_ThongTin_CurrentUser === 'function') capNhat_ThongTin_CurrentUser(); 
+    if (typeof capNhat_ThongTin_CurrentUser === 'function') capNhat_ThongTin_CurrentUser(); 
 }

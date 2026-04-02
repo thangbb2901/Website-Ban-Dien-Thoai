@@ -1,6 +1,7 @@
 // doannhom12/js/chitietsanpham.js
 
 var nameProduct, maProduct, sanPhamHienTai; // Biến toàn cục
+const HOME_RECENTLY_VIEWED_KEY = 'homeRecentlyViewedProducts';
 
 window.onload = async function () { 
     try {
@@ -42,6 +43,18 @@ function khongTimThaySanPham() {
 
     if (productNotFoundDiv) productNotFoundDiv.style.display = 'block';
     if (chiTietSanPhamDiv) chiTietSanPhamDiv.style.display = 'none';
+}
+
+function saveRecentlyViewedProduct(masp) {
+    if (!masp) return;
+    try {
+        const viewed = JSON.parse(localStorage.getItem(HOME_RECENTLY_VIEWED_KEY)) || [];
+        const normalized = viewed.filter(id => id !== masp);
+        normalized.unshift(masp);
+        localStorage.setItem(HOME_RECENTLY_VIEWED_KEY, JSON.stringify(normalized.slice(0, 12)));
+    } catch (error) {
+        console.error('Không thể lưu sản phẩm đã xem:', error);
+    }
 }
 
 function phanTich_URL_chiTietSanPham() {
@@ -91,6 +104,8 @@ function phanTich_URL_chiTietSanPham() {
         return khongTimThaySanPham();
     }
 
+    saveRecentlyViewedProduct(sanPhamHienTai.masp);
+
     var divChiTiet = document.querySelector('.chitietSanpham'); // Dùng querySelector
     if (!divChiTiet) {
         console.error("Không tìm thấy div 'chitietSanpham'");
@@ -122,6 +137,27 @@ function phanTich_URL_chiTietSanPham() {
         ratingHTML += `<span> ${sanPhamHienTai.rateCount} đánh giá</span>`;
     }
     if (ratingDiv) ratingDiv.innerHTML = ratingHTML;
+
+    // Cập nhật trạng thái kho
+    var stockCountElement = divChiTiet.querySelector('.detail-stock-count');
+    if (stockCountElement) {
+        stockCountElement.setAttribute('data-masp', sanPhamHienTai.masp);
+        stockCountElement.textContent = (sanPhamHienTai.quantity > 0) ? `${sanPhamHienTai.quantity} máy` : 'Hết hàng';
+        stockCountElement.style.color = (sanPhamHienTai.quantity > 0) ? '#ff8c00' : '#ff0000';
+    }
+
+    const buyNowButton = divChiTiet.querySelector('.buy_now');
+    if (buyNowButton) {
+        if (Number(sanPhamHienTai.quantity) > 0) {
+            buyNowButton.classList.remove('disabled');
+            buyNowButton.style.pointerEvents = 'auto';
+            buyNowButton.innerHTML = `<b>MUA NGAY</b><p>Giao tận nơi hoặc nhận tại cửa hàng</p>`;
+        } else {
+            buyNowButton.classList.add('disabled');
+            buyNowButton.style.pointerEvents = 'none';
+            buyNowButton.innerHTML = `<b>HẾT HÀNG</b><p>Sản phẩm hiện không thể đặt mua</p>`;
+        }
+    }
 
     var priceDiv = divChiTiet.querySelector('.price_sale .area_price'); // Dùng querySelector
     if (priceDiv) {
@@ -370,10 +406,35 @@ function suggestion() {
     if (divGoiYSanPham) {
         divGoiYSanPham.innerHTML = ''; 
         if (sanPhamTuongTu.length > 0) {
-            addKhungSanPham(sanPhamTuongTu, 'Sản phẩm tương tự có thể bạn quan tâm', ['#607D8B', '#9E9E9E'], divGoiYSanPham);
+            // SỬA ĐỔI: Dùng owl-carousel thay vì grid tĩnh
+            let html = `<div class="khungSanPham" style="border-color: #0f172a">
+                <h3 class="tenKhung" style="background: linear-gradient(135deg, #0f172a, #1e293b); font-size: 20px; font-weight: 700; color: #fff; padding: 15px; margin: 0; text-align: center;">* SẢN PHẨM TƯƠNG TỰ *</h3>
+                <ul class="listSpTrongKhung owl-carousel owl-theme" id="goiY-carousel" style="padding: 20px 10px; margin: 0;">`;
+            
+            sanPhamTuongTu.forEach(sp => {
+                html += addProduct(sp, null, true);
+            });
+
+            html += `</ul></div>`;
+            divGoiYSanPham.innerHTML = html;
+
+            // Kích hoạt thanh trượt
+            setTimeout(() => {
+                $('#goiY-carousel').owlCarousel({
+                    loop: sanPhamTuongTu.length > 5,
+                    margin: 15,
+                    nav: true,
+                    dots: false,
+                    responsive: {
+                        0: { items: 2 },
+                        600: { items: 3 },
+                        1000: { items: 5 }
+                    }
+                });
+            }, 100);
+
         } else {
-            // Có thể để trống thay vì hiển thị "Không tìm thấy..." nếu không muốn
-            // divGoiYSanPham.innerHTML = '<p style="text-align:center; color:grey; margin: 20px;">Không tìm thấy sản phẩm gợi ý nào phù hợp.</p>';
+            // Không có gợi ý
         }
     }
 }

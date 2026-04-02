@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # Dịch vụ tự động tạo chứng chỉ Bảo mật truyền thông SSL/TLS (Self-signed Certificate)
+  ssl_cert_gen:
+    image: alpine
+    volumes:
+      - ./ssl:/etc/ssl/mycerts
+    command: >
+      sh -c "apk add --no-cache openssl && if [ ! -f /etc/ssl/mycerts/nginx.crt ]; then openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/mycerts/nginx.key -out /etc/ssl/mycerts/nginx.crt -subj '/C=VN/ST=Hanoi/L=Hanoi/O=Security/OU=IT/CN=localhost'; fi"
+
+  # Dịch vụ Web App (Flask + Gunicorn) - ĐƯỢC CÂN BẰNG TẢI LÀM 3 BẢN SAO
+  web:
+    build: .
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 3
+    environment:
+      - FLASK_ENV=development
+    volumes:
+      - .:/app
+    networks:
+      # CHỈ cho phép Flask nằm ở mảng mạng ẩn (backend)
+      - backend-network
+
+  # Dịch vụ Reverse Proxy (Nginx) - LOAD BALANCER & GATEWAY
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    restart: always
+    ports:
+      # Hứng yêu cầu HTTP thuần từ mạng Internet
+      - "8080:80" 
+      # Hứng yêu cầu HTTPS (SSL/TLS - Mã hóa đường truyền)
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./static:/app/static
+      # Mount thư mục chứa chứng chỉ truy cập an toàn
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      web:
+        condition: service_started
+      ssl_cert_gen:
+        condition: service_completed_successfully
+    networks:
+      # Nginx có 2 "card mạng", 1 đối mặt Internet, 1 giao tiếp với backend
+      - frontend-network
+      - backend-network
+
+  # [Monitoring] Bộ dò quét biến đổi mạng lưới Web
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx_exporter
+    command:
+      - -nginx.scrape-uri
+      - http://nginx:80/stub_status
+    restart: always
+    networks:
+      - frontend-network
+
+  # [Monitoring] Thu thập và tổng hợp chỉ số băng thông
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_monitor
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: always
+    networks:
+      - frontend-network
+
+  # [Monitoring] Bảng giám sát đồ thị trực quan (Dashboard)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_dashboard
+    ports:
+      - "3000:3000" # Truy cập: http://localhost:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: always
+    networks:
+      - frontend-network
+
+networks:
+  # Mạng mặt mền không bảo mật (DMZ concept)
+  frontend-network:
+    driver: bridge
+  # Mạng backend nội bộ bị cô lập hoàn toàn
+  backend-network:
+    driver: bridge
+
+volumes:
+  grafana_data:
+  prometheus_data:
+

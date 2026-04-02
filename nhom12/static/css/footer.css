@@ -1,160 +1,202 @@
-/* === Footer Section === */
+/* =============================================
+   FOOTER.CSS - LIGHT TGDD-INSPIRED FOOTER
+   ============================================= */
+
 .footer-wrapper {
     width: 100%;
-    background: #ffffff;
-    color: #333;
-    padding: 40px 20px;
-    border-top: 1px solid #e0e0e0;
-    font-family: Arial, sans-serif;
+    margin-top: 28px;
+    padding: 36px 24px 0;
+    background: #fff;
+    color: var(--tgdd-text-soft);
     font-size: 14px;
+    border-top: 1px solid var(--tgdd-border);
 }
 
 .footer-content-new {
     max-width: 1200px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 40px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 34px;
+    padding-bottom: 34px;
 }
 
 .footer-col {
-    line-height: 1.7;
+    line-height: 1.75;
 }
 
 .footer-logo {
     display: flex;
     align-items: center;
-    margin-bottom: 15px;
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
 .footer-logo img {
-    max-height: 40px;
-    margin-right: 10px;
+    max-height: 36px;
 }
 
 .footer-logo span {
-    font-size: 20px;
-    font-weight: bold;
-    color: #E53935;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.footer-description {
-    margin-bottom: 20px;
-}
-
-.footer-col p {
-    margin-bottom: 10px;
-}
-
-.footer-col p strong {
-    color: #000;
-}
-
-.footer-col a {
-    color: #007bff;
-    text-decoration: none;
-}
-
-.footer-col a:hover {
-    text-decoration: underline;
+    color: var(--tgdd-text);
+    font-size: 18px;
+    font-weight: 800;
 }
 
 .footer-title {
-    font-size: 16px;
-    font-weight: bold;
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    color: #333;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #E53935;
     display: inline-block;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    color: var(--tgdd-text);
+    font-size: 14px;
+    font-weight: 800;
+    border-bottom: 2px solid var(--tgdd-yellow);
+}
+
+.footer-description {
+    margin-bottom: 16px;
+    color: var(--tgdd-text-soft);
+}
+
+.footer-col p {
+    margin-bottom: 8px;
+    color: var(--tgdd-text-soft);
+}
+
+.footer-col p strong {
+    color: var(--tgdd-text);
+}
+
+.footer-col a {
+    color: var(--tgdd-text-soft);
+}
+
+.footer-col a:hover {
+    color: var(--tgdd-blue);
 }
 
 .footer-contact-section {
-    margin-bottom: 25px;
+    margin-bottom: 18px;
 }
 
 .footer-contact-section h4 {
-    font-size: 14px;
-    margin: 0 0 8px 0;
+    margin: 0 0 4px;
+    color: #777;
+    font-size: 12px;
     font-weight: 600;
+    text-transform: uppercase;
 }
 
 .contact-phone a {
+    color: var(--tgdd-blue);
     font-size: 22px;
-    font-weight: bold;
-    color: #E53935;
-    text-decoration: none;
+    font-weight: 800;
 }
 
 .contact-note {
-    font-size: 13px;
-    color: #757575;
-}
-
-.social-links,
-.payment-methods {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
+    margin-top: 4px;
+    color: #8b8b8b;
+    font-size: 12px;
 }
 
 .social-links {
-    margin-bottom: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+
+.footer-quick-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    margin-bottom: 18px;
+}
+
+.footer-quick-links a {
+    color: var(--tgdd-text-soft);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.footer-quick-links a:hover {
+    color: var(--tgdd-blue);
 }
 
 .social-links img {
-    height: 35px;
-    transition: transform 0.2s;
+    height: 32px;
+    border-radius: 8px;
 }
 
 .social-links img:hover {
-    transform: scale(1.1);
+    transform: translateY(-2px);
+}
+
+.payment-methods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .payment-icon {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 5px 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 13px;
-    background-color: #f7f7f7;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--tgdd-border);
+    border-radius: 8px;
+    color: #666;
+    background: #fafafa;
+    font-size: 12px;
+}
+
+.payment-icon:hover {
+    border-color: #c7dff2;
+    color: var(--tgdd-blue);
 }
 
 .payment-icon .fa {
-    font-size: 18px;
-    color: #0056b3;
+    font-size: 16px;
 }
+
 .payment-icon .fa-cc-visa {
-    color: #1A1F71;
+    color: #1a1f71;
 }
+
 .payment-icon .fa-cc-mastercard {
-    color: #EB001B;
+    color: #eb001b;
 }
 
 .copy-right {
     width: 100%;
+    padding: 14px 16px;
+    background: #f7f7f7;
+    color: #777;
+    border-top: 1px solid var(--tgdd-border);
     text-align: center;
-    padding: 15px;
     font-size: 13px;
-    color: #fff;
-    background: #E53935;
 }
 
 .copy-right p {
     margin: 0;
-    padding: 0;
 }
 
 .copy-right a {
-    color: #fff;
-    font-weight: bold;
-    text-decoration: none;
+    color: var(--tgdd-blue);
+    font-weight: 600;
 }
 
-/* Bỏ qua phần CSS của .plc vì nó không còn được sử dụng */
+@media (max-width: 700px) {
+    .footer-wrapper {
+        padding: 28px 16px 0;
+    }
+
+    .footer-content-new {
+        gap: 26px;
+        padding-bottom: 26px;
+    }
+
+    .contact-phone a {
+        font-size: 18px;
+    }
+}

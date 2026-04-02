@@ -1,20 +1,70 @@
-* {
+/* =============================================
+   STYLE.CSS - GLOBAL RESET + TGDD-INSPIRED TOKENS
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --tgdd-yellow: #ffd500;
+    --tgdd-yellow-dark: #f3c400;
+    --tgdd-blue: #288ad6;
+    --tgdd-blue-dark: #1f6fb0;
+    --tgdd-red: #d70018;
+    --tgdd-orange: #f7941e;
+    --tgdd-text: #2f2f2f;
+    --tgdd-text-soft: #666;
+    --tgdd-border: #e5e5e5;
+    --tgdd-border-soft: #f0f0f0;
+    --tgdd-bg: #f3f4f6;
+    --font-main: 'Inter', 'Segoe UI', sans-serif;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+*, *::before, *::after {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
     outline: none;
-    /* font-family: Arial, Helvetica, sans-serif;  XÓA DÒNG NÀY KHỎI ĐÂY */
 }
 
-body, html {
-    min-width: 1024px;
-    font-family: Arial, Helvetica, sans-serif; /* CHUYỂN FONT-FAMILY XUỐNG ĐÂY */
+html, body {
+    font-family: var(--font-main);
+    font-size: 15px;
+    color: var(--tgdd-text);
+    background: var(--tgdd-bg);
+    line-height: 1.5;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* ... phần còn lại của style.css giữ nguyên ... */
+body {
+    min-width: 320px;
+}
 
 a {
+    color: inherit;
     text-decoration: none;
-    color: #222;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 12px;
+}
+
+.flexContain {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: center;
 }
 
 .clear {
@@ -22,202 +72,95 @@ a {
     line-height: 0;
 }
 
-/* căn giữa section, và set độ rộng lớn nhất là 1200px */
-section {
-    max-width: 1205px;
-    margin: 0 auto;
-}
-
-hr {
-    color: #ddd;
-    background-color: #ddd;
-    border-top: 1px solid #ddd;
-}
-
-.flexContain {
-    display: -webkit-box;
-    display: -ms-flexbox;
-    display: flex;
-    -ms-flex-wrap: wrap;
-    flex-wrap: wrap;
-    -webkit-box-orient: horizontal;
-    -webkit-box-direction: normal;
-    -ms-flex-direction: row;
-    flex-direction: row;
-    -webkit-box-pack: center;
-    -ms-flex-pack: center;
-    justify-content: center;
-}
-
-/* Use for auto clear float */
-/* ====== https://css-tricks.com/snippets/css/clear-fix/ ======== */
-.group:before,
-.group:after {
+.group::after {
     content: "";
     display: table;
-}
-
-.group:after {
     clear: both;
 }
 
 .group {
     zoom: 1;
-    /* For IE 6/7 (trigger hasLayout) */
 }
 
-/* =========   Alert ===============*/
 #alert {
-    z-index: 200; /* luôn trên cùng (đè lên những thứ khác) */
-    display: block;
+    z-index: 9999;
+    display: none;
     position: fixed;
-    bottom: 40px;
-    right: 5px;
-    padding: 20px;
-    background-color: #111;
+    bottom: 78px;
+    right: 20px;
+    padding: 14px 18px;
+    background: rgba(17, 17, 17, 0.94);
+    color: #fff;
+    font-weight: 500;
+    border-radius: 10px;
     opacity: 0;
-    color: white;
-    font-weight: bold;
-    -webkit-transition: 0.3s;
-    -o-transition: 0.3s;
-    transition: 0.3s;
+    transition: opacity 0.3s ease;
+    max-width: 360px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.92rem;
+    line-height: 1.45;
+    backdrop-filter: blur(10px);
 }
 
 #closebtn {
-    margin-left: 15px;
-    color: white;
-    font-weight: bold;
+    margin-left: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 700;
     float: right;
-    font-size: 22px;
-    line-height: 20px;
-    -webkit-transition: 0.3s;
-    -o-transition: 0.3s;
-    transition: 0.3s;
+    font-size: 18px;
+    line-height: 18px;
+    cursor: pointer;
 }
 
-/* ===== End clear float ====== */
+#closebtn:hover {
+    color: #fff;
+}
 
 #goto-top-page {
     position: fixed;
-    bottom: 15px;
-    right: 15px;
-    z-index: 100;
-    background: rgba(0, 0, 0, .2);
-    color: #fff;
-    font-size: 18px;
+    right: 24px;
+    bottom: 24px;
+    z-index: 999;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    line-height: 40px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tgdd-blue);
+    color: #fff;
+    font-size: 17px;
+    box-shadow: 0 10px 24px rgba(40, 138, 214, 0.35);
     cursor: pointer;
-    transition-duration: .2s;
-}
-#goto-top-page:hover {
-    background: rgba(0, 0, 0, .7);
-    width: 50px;
-    height: 50px;
-    line-height: 50px;
 }
 
-/* ========= ScrollBar ============ */
+#goto-top-page:hover {
+    background: var(--tgdd-blue-dark);
+    transform: translateY(-2px);
+}
+
 ::-webkit-scrollbar {
-    width: .7em;
-    height: .7em;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #eee;
+    background: #ececec;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #999;
+    background: #bcbcbc;
+    border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #bbb;
+    background: #9d9d9d;
 }
 
-/* ==================== css thêm , chưa sử dụng ========================= */
-/* tooltip https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_copy_clipboard2 */
-.tooltip {
-    position: absolute;
-    display: inline-block;
-    bottom: 5px;
-    right: 5px;
-}
-
-.tooltip .tooltiptext {
-    visibility: hidden;
-    width: 140px;
-    background-color: #555;
-    color: #fff;
-    text-align: center;
-    border-radius: 6px;
-    padding: 5px;
-    position: absolute;
-    z-index: 21;
-    bottom: 150%;
-    left: 50%;
-    margin-left: -75px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.tooltip .tooltiptext::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #555 transparent transparent transparent;
-}
-
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
-
-/* animation ping from thegioididong */
-.dot {
-    width: 10px;
-    height: 10px;
-    background-color: #f33;
-    border-radius: 100%;
-    display: block;
-}
-
-.dot .ping {
-    border: 1px solid #f33;
-    width: 10px;
-    height: 10px;
-    opacity: 1;
-    background-color: rgba(238, 46, 36, .2);
-    border-radius: 100%;
-    -webkit-animation-duration: 1.25s;
-    animation-duration: 1.25s;
-    -webkit-animation-name: sonar;
-    animation-name: sonar;
-    -webkit-animation-iteration-count: infinite;
-    animation-iteration-count: infinite;
-    -webkit-animation-timing-function: linear;
-    animation-timing-function: linear;
-    display: block;
-    margin: -1px 0 0 -1px;
-}
-
-@keyframes sonar {
-    0% {
-        opacity: 1;
-        -webkit-transform: scale(1);
-        transform: scale(1)
-    }
-
-    100% {
-        -webkit-transform: scale(3);
-        transform: scale(3);
-        opacity: 0
-    }
+hr {
+    height: 1px;
+    background: var(--tgdd-border);
+    border: none;
+    margin: 14px 0;
 }

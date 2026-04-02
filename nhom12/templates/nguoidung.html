@@ -9,7 +9,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" crossorigin="anonymous">
     <script src="{{ url_for('static', filename='js/Jquery/Jquery.min.js') }}"></script>
@@ -27,17 +27,24 @@
     <script src="{{ url_for('static', filename='js/nguoidung.js') }}"></script>
 </head>
 <body>
+    <script> addHeader(); </script>
     <script> addTopNav(); </script>
 
     <section>
-        <script> addHeader(); </script>
         <img src="{{ url_for('static', filename='img/banners/blackFriday.gif') }}" alt="Banner khuyến mãi" style="width: 100%;">
 
         <div class="user-container">
-            <h1 class="user-title">Trang người dùng</h1>
+            <h1 class="user-title">
+                <i class="fa fa-user-circle" style="color: #3b82f6;"></i>
+                Trang người dùng
+            </h1>
             <div class="user-nav">
-                <a href="#info" class="active">Thông tin tài khoản</a>
-                <a href="#orders">Lịch sử đơn hàng</a>
+                <a href="#info" class="active">
+                    <i class="fa fa-id-card-o"></i> Thông tin tài khoản
+                </a>
+                <a href="#orders">
+                    <i class="fa fa-history"></i> Lịch sử đơn hàng
+                </a>
             </div>
             <div id="user-content">
                 <div id="info" class="user-info active"></div>
@@ -57,16 +64,77 @@
                         <input type="text" id="ten" name="ten" required>
                     </div>
                     <div class="form-group">
-                        <label for="email">Email</label>
+                        <label for="email">Gmail</label>
                         <input type="email" id="email" name="email">
                     </div>
-                    <div class="form-group">
-    <label for="newPassword">Mật khẩu mới</label>
-    <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" placeholder="Để trống nếu không đổi">
-</div>
+                    
+                    <!-- Nhãn nổi địa chỉ (Dùng chung style gioHang.css) -->
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label style="position: static; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: block;">Địa chỉ nhận hàng</label>
+                        <div class="address-picker-grid">
+                            <div class="form-floating">
+                                <select id="user-province" name="province">
+                                    <option value="" disabled selected hidden>Chọn Tỉnh / Thành phố</option>
+                                </select>
+                                <label for="user-province">Tỉnh / Thành phố</label>
+                            </div>
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="form-floating">
+                                    <select id="user-district" name="district" disabled>
+                                        <option value="" disabled selected hidden>Chọn Quận / Huyện</option>
+                                    </select>
+                                    <label for="user-district">Quận / Huyện</label>
+                                </div>
+                                <div class="form-floating">
+                                    <select id="user-ward" name="ward" disabled>
+                                        <option value="" disabled selected hidden>Chọn Phường / Xã</option>
+                                    </select>
+                                    <label for="user-ward">Phường / Xã</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-floating">
+                            <input type="text" id="user-street" name="street" placeholder=" ">
+                            <label for="user-street">Số nhà, tên đường</label>
+                        </div>
+                    </div>
+
                     <div class="form-actions">
                         <button type="submit" class="confirm-btn"><i class="fa fa-save"></i> Lưu</button>
                         <button type="button" class="cancel-btn" onclick="closeEditInfoModal()"><i class="fa fa-times"></i> Hủy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="changePasswordModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeChangePasswordModal()">&times;</span>
+                <h2>Đổi Mật Khẩu</h2>
+                <form id="changePasswordForm" onsubmit="submitPasswordChange(event)">
+                    <div class="form-group">
+                        <label for="verifyEmail">Nhập đúng Gmail hiện tại <span class="req">*</span></label>
+                        <input type="email" id="verifyEmail" name="verifyEmail" required autocomplete="email">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="confirm-btn" onclick="sendPasswordChangeOtp()">
+                            <i class="fa fa-paper-plane"></i> Gửi mã xác thực
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label for="emailOtp">Mã xác thực gửi về Gmail <span class="req">*</span></label>
+                        <input type="text" id="emailOtp" name="emailOtp" maxlength="6" disabled required>
+                    </div>
+                    <div class="form-group">
+                        <label for="changeNewPassword">Mật khẩu mới <span class="req">*</span></label>
+                        <input type="password" id="changeNewPassword" name="changeNewPassword" minlength="6" disabled required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmChangeNewPassword">Xác nhận mật khẩu mới <span class="req">*</span></label>
+                        <input type="password" id="confirmChangeNewPassword" name="confirmChangeNewPassword" minlength="6" disabled required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="confirm-btn"><i class="fa fa-key"></i> Đổi mật khẩu</button>
+                        <button type="button" class="cancel-btn" onclick="closeChangePasswordModal()"><i class="fa fa-times"></i> Hủy</button>
                     </div>
                 </form>
             </div>

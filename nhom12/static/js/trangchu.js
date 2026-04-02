@@ -1,5 +1,87 @@
 // Trong doannhom12/js/trangchu.js
 
+const HOME_SCROLL_POSITION_KEY = 'homeScrollPosition';
+const HOME_RECENTLY_VIEWED_KEY = 'homeRecentlyViewedProducts';
+const HOMEPAGE_VISIBLE_PRODUCTS = 10;
+
+function setupProductNavigationScrollState() {
+    if (document.body.dataset.homeScrollTrackingAttached === 'true') return;
+    document.body.dataset.homeScrollTrackingAttached = 'true';
+
+    document.addEventListener('click', function (event) {
+        const productLink = event.target.closest('a[href*="/chitietsanpham?masp="]');
+        if (!productLink) return;
+        sessionStorage.setItem(HOME_SCROLL_POSITION_KEY, String(window.scrollY || window.pageYOffset || 0));
+    });
+}
+
+function restoreHomeScrollPosition() {
+    const savedScroll = sessionStorage.getItem(HOME_SCROLL_POSITION_KEY);
+    if (!savedScroll) return;
+
+    const scrollY = parseInt(savedScroll, 10);
+    if (isNaN(scrollY)) {
+        sessionStorage.removeItem(HOME_SCROLL_POSITION_KEY);
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            window.scrollTo(0, scrollY);
+            setTimeout(() => window.scrollTo(0, scrollY), 120);
+        });
+    });
+
+    sessionStorage.removeItem(HOME_SCROLL_POSITION_KEY);
+}
+
+function initProductResultsSlider() {
+    const productsContainer = $('#products');
+    if (!productsContainer.length || !productsContainer.children('li.sanpham').length) return;
+    productsContainer.children('#khongCoSanPham').remove();
+
+    const productFilterInput = document.querySelector('.contain-products .filterName');
+    const pagination = document.querySelector('.contain-products .pagination');
+    if (productFilterInput) productFilterInput.style.display = 'none';
+    if (pagination) pagination.style.display = 'none';
+
+    if (productsContainer.hasClass('owl-loaded')) {
+        productsContainer.trigger('destroy.owl.carousel');
+    }
+
+    productsContainer.addClass('owl-carousel owl-theme product-results-slider');
+
+    productsContainer.owlCarousel({
+        loop: productsContainer.children('li.sanpham').length > 4,
+        margin: 0,
+        nav: true,
+        dots: false,
+        autoplay: false,
+        responsive: {
+            0: { items: 1.15 },
+            520: { items: 2.15 },
+            768: { items: 3.1 },
+            992: { items: 4.1 },
+            1200: { items: 5 }
+        }
+    });
+}
+
+function destroyProductResultsSlider() {
+    const productsContainer = $('#products');
+    const productFilterInput = document.querySelector('.contain-products .filterName');
+    const pagination = document.querySelector('.contain-products .pagination');
+
+    if (productFilterInput) productFilterInput.style.display = '';
+    if (pagination) pagination.style.display = '';
+
+    if (!productsContainer.length) return;
+    if (productsContainer.hasClass('owl-loaded')) {
+        productsContainer.trigger('destroy.owl.carousel');
+    }
+    productsContainer.removeClass('owl-carousel owl-theme product-results-slider owl-loaded');
+}
+
 // Hàm window.onload cần được đánh dấu là async để có thể dùng await bên trong
 window.onload = async function () {
     // Gọi và đợi hàm khoiTao (từ dungchung.js) hoàn tất việc tải dữ liệu
@@ -15,18 +97,13 @@ window.onload = async function () {
         var tags = ["Samsung", "iPhone", "Huawei", "Oppo", "Mobi"];
         for (var t of tags) addTags(t, "/?search=" + t);
 
-        // Thêm logo công ty
-        var company = ["Apple.jpg", "Samsung.jpg", "Oppo.jpg", "Nokia.jpg", "Huawei.jpg", "Xiaomi.png",
-            "Realme.png", "Vivo.jpg", "Philips.jpg", "Mobell.jpg", "Mobiistar.jpg", "Itel.jpg",
-            "Coolpad.png", "HTC.jpg", "Motorola.jpg"
-        ];
-        for (var c of company) addCompany("/static/img/company/" + c, c.slice(0, c.length - 4));
-
         var sanPhamPhanTich;
         var sanPhamPhanTrang;
 
         var filters = getFilterFromURL();
+        const homeFilterControls = document.getElementById('home-filter-controls');
         if (filters.length) {
+            if (homeFilterControls) homeFilterControls.style.display = '';
             sanPhamPhanTich = phanTich_URL(filters, true);
             sanPhamPhanTrang = tinhToanPhanTrang(sanPhamPhanTich, filtersFromUrl.page || 1);
             if (!sanPhamPhanTrang.length) {
@@ -36,20 +113,12 @@ window.onload = async function () {
             }
             var productContainerElement = document.getElementsByClassName('contain-products')[0];
             if(productContainerElement) productContainerElement.style.display = '';
+            initProductResultsSlider();
         } else {
-            var soLuong = (window.innerWidth < 1200 ? 4 : 5);
-            var yellow_red = ['#ff9c00', '#ec1f1f'];
-            var blue = ['#42bcf4', '#004c70'];
-            var green = ['#5de272', '#007012'];
-            var div = document.getElementsByClassName('contain-khungSanPham')[0];
-            if (div) {
-                addKhungSanPham('NỔI BẬT NHẤT', yellow_red, ['star=5', 'sort=rateCount-decrease'], soLuong, div);
-                addKhungSanPham('SẢN PHẨM MỚI', blue, ['promo=moiramat', 'sort=rateCount-decrease'], soLuong, div);
-                addKhungSanPham('TRẢ GÓP 0%', yellow_red, ['promo=tragop', 'sort=rateCount-decrease'], soLuong, div);
-                addKhungSanPham('GIÁ SỐC ONLINE', green, ['promo=giareonline', 'sort=rateCount-decrease'], soLuong, div);
-                addKhungSanPham('GIẢM GIÁ LỚN', yellow_red, ['promo=giamgia'], soLuong, div);
-                addKhungSanPham('GIÁ RẺ CHO MỌI NHÀ', green, ['price=0-3000000', 'sort=price'], soLuong, div);
-            }
+            if (homeFilterControls) homeFilterControls.style.display = 'none';
+            destroyProductResultsSlider();
+            renderHomepageSections();
+            loadInlineBanners();
         }
 
         // Thêm các lựa chọn filter vào dropdown
@@ -78,6 +147,8 @@ window.onload = async function () {
         addSortFilter('decrease', 'name', 'Tên Z-A');
 
         addAllChoosedFilter();
+        setupProductNavigationScrollState();
+        restoreHomeScrollPosition();
 
     } else {
         console.error("Không có dữ liệu sản phẩm để hiển thị trên trang chủ.");
@@ -212,6 +283,257 @@ function addProductsFrom(list, vitri, soluong) {
 function clearAllProducts() {
     var productsUl = document.getElementById('products');
 	if(productsUl) productsUl.innerHTML = "";
+}
+
+function getStoredViewedProducts() {
+    try {
+        const ids = JSON.parse(localStorage.getItem(HOME_RECENTLY_VIEWED_KEY)) || [];
+        if (!Array.isArray(ids)) return [];
+        return ids;
+    } catch (error) {
+        console.error('Không đọc được danh sách sản phẩm đã xem:', error);
+        return [];
+    }
+}
+
+function getProductPriceValue(product) {
+    if (!product) return Number.MAX_SAFE_INTEGER;
+    const onlinePromoPrice = product.promo && product.promo.name && product.promo.name.toLowerCase() === 'giareonline'
+        ? stringToNum(product.promo.value || '0')
+        : null;
+    return onlinePromoPrice && onlinePromoPrice > 0 ? onlinePromoPrice : stringToNum(product.price || '0');
+}
+
+function normalizeProductList(list) {
+    return Array.isArray(list) ? list.filter(Boolean) : [];
+}
+
+function pickProducts(list, limit) {
+    return normalizeProductList(list).slice(0, limit || HOMEPAGE_VISIBLE_PRODUCTS);
+}
+
+function getViewedProducts() {
+    const ids = getStoredViewedProducts();
+    const result = [];
+    ids.forEach(id => {
+        const product = timKiemTheoMa(window.list_products, id);
+        if (product) result.push(product);
+    });
+    return result;
+}
+
+function clearViewedProducts() {
+    localStorage.removeItem(HOME_RECENTLY_VIEWED_KEY);
+    renderHomepageSections();
+}
+
+function removeViewedProduct(masp) {
+    if (!masp) return;
+    const ids = getStoredViewedProducts().filter(id => id !== masp);
+    localStorage.setItem(HOME_RECENTLY_VIEWED_KEY, JSON.stringify(ids));
+    renderHomepageSections();
+}
+
+function getPromoProducts() {
+    const source = normalizeProductList(window.list_products);
+    return source
+        .filter(p => p.quantity > 0 && p.promo && p.promo.name && ['giareonline', 'giamgia', 'tragop'].includes(p.promo.name.toLowerCase()))
+        .sort((a, b) => getProductPriceValue(a) - getProductPriceValue(b));
+}
+
+function getSuggestedProducts() {
+    const source = normalizeProductList(window.list_products);
+    return source
+        .filter(p => Number(p.quantity) > 0)
+        .sort((a, b) => {
+            const starDiff = (Number(b.star) || 0) - (Number(a.star) || 0);
+            if (starDiff !== 0) return starDiff;
+            return (Number(b.rateCount) || 0) - (Number(a.rateCount) || 0);
+        });
+}
+
+function getNewArrivalProducts() {
+    const source = normalizeProductList(window.list_products);
+    const featured = source.filter(p => p.promo && p.promo.name && p.promo.name.toLowerCase() === 'moiramat');
+    if (featured.length) return featured;
+    return source.slice().reverse();
+}
+
+function renderSmallViewedItem(product) {
+    const priceValue = getProductPriceValue(product);
+    return `
+        <a class="viewed-product-item" href="/chitietsanpham?masp=${product.masp}">
+            <button class="viewed-remove-btn" type="button" onclick="event.preventDefault(); event.stopPropagation(); removeViewedProduct('${product.masp}')">
+                <i class="fa fa-times"></i>
+            </button>
+            <div class="viewed-thumb">
+                <img src="${product.img}" alt="${product.name}">
+            </div>
+            <div class="viewed-info">
+                <h4>${product.name}</h4>
+                <strong>${numToString(priceValue)}₫</strong>
+            </div>
+        </a>
+    `;
+}
+
+function renderProductGridSection(options) {
+    const title = options.title || '';
+    const products = pickProducts(options.products, options.limit);
+    if (!products.length) return '';
+
+    const pills = Array.isArray(options.pills) && options.pills.length
+        ? `<div class="homepage-section-pills">${options.pills.map(pill => `<a href="${pill.href}">${pill.label}</a>`).join('')}</div>`
+        : '';
+
+    const cta = options.ctaHref
+        ? `<a class="homepage-section-cta" href="${options.ctaHref}">${options.ctaLabel || 'Xem thêm'} <i class="fa fa-angle-right"></i></a>`
+        : '';
+
+    return `
+        <div class="homepage-section-card">
+            <div class="homepage-section-header">
+                <div>
+                    <h2>${title}</h2>
+                    ${options.subtitle ? `<p>${options.subtitle}</p>` : ''}
+                </div>
+                ${cta}
+            </div>
+            ${pills}
+            <ul class="homeproduct homepage-product-grid">
+                ${products.map(product => addProduct(product, null, true)).join('')}
+            </ul>
+        </div>
+    `;
+}
+
+function renderInlineBanners() {
+    return `
+        <div class="homepage-inline-banners" id="inline-banners"></div>
+    `;
+}
+
+async function loadInlineBanners() {
+    const container = document.getElementById('inline-banners');
+    if (!container) return;
+    try {
+        const response = await fetch('/api/banners?type=inline');
+        if (!response.ok) {
+            container.style.display = 'none';
+            return;
+        }
+        const banners = await response.json();
+        const activeBanners = Array.isArray(banners)
+            ? banners.filter(b => b.is_active).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+            : [];
+        if (!activeBanners.length) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = '';
+        container.innerHTML = activeBanners.map(banner => `
+            <a href="${banner.link_url || '#'}" class="inline-banner-card inline-banner-warm" ${banner.link_url ? 'target="_blank"' : ''}>
+                <img src="${banner.image_url}" alt="${banner.alt_text || 'Banner'}">
+            </a>
+        `).join('');
+    } catch (error) {
+        container.style.display = 'none';
+        console.error("Lỗi khi tải inline banners:", error);
+    }
+}
+
+function renderHomepageSections() {
+    const container = document.getElementById('homepage-sections') || document.getElementsByClassName('contain-khungSanPham')[0];
+    if (!container) return;
+
+    const viewedProducts = getViewedProducts();
+    const shouldUseViewedSlider = viewedProducts.length > 5;
+    const promoProducts = pickProducts(getPromoProducts(), HOMEPAGE_VISIBLE_PRODUCTS);
+    const suggestedProducts = pickProducts(getSuggestedProducts(), 10);
+    const newArrivalProducts = pickProducts(getNewArrivalProducts(), 10);
+
+    const brandPills = [
+        { label: 'Điện thoại', href: '/?search=Dien+Thoai' },
+        { label: 'Apple', href: '/?search=iPhone' },
+        { label: 'Samsung', href: '/?search=Samsung' },
+        { label: 'Xiaomi', href: '/?search=Xiaomi' },
+        { label: 'Laptop', href: '/?search=Laptop' },
+        { label: 'Phụ kiện', href: '/?search=Phu+kien' }
+    ];
+
+    const promoPills = [
+        { label: 'Flash sale', href: '/?promo=giamgia' },
+        { label: 'Giảm đến 50%', href: '/?promo=giareonline' },
+        { label: 'Online giá rẻ', href: '/?promo=giareonline' },
+        { label: 'Trả góp', href: '/?promo=tragop' }
+    ];
+
+    const viewedHtml = viewedProducts.length
+        ? `
+            <div class="recently-viewed-strip">
+                <div class="homepage-section-header">
+                    <div>
+                        <h2>Sản phẩm đã xem</h2>
+                        <p>Quay lại nhanh các sản phẩm bạn vừa xem gần đây.</p>
+                    </div>
+                    <button class="homepage-clear-button" type="button" onclick="clearViewedProducts()">
+                        <i class="fa fa-trash-o"></i> Xóa đã xem
+                    </button>
+                </div>
+                <div class="viewed-products-row${shouldUseViewedSlider ? ' owl-carousel owl-theme viewed-products-slider' : ''}">
+                    ${viewedProducts.map(renderSmallViewedItem).join('')}
+                </div>
+            </div>
+        `
+        : '';
+
+    container.innerHTML = `
+        ${viewedHtml}
+        ${renderProductGridSection({
+            title: 'Khuyến mãi online',
+            subtitle: 'Chọn nhanh deal nổi bật đang có giá tốt trên cửa hàng.',
+            products: promoProducts,
+            ctaHref: '/?promo=giareonline',
+            ctaLabel: 'Xem thêm ưu đãi',
+            pills: promoPills
+        })}
+        ${renderInlineBanners()}
+        ${renderProductGridSection({
+            title: 'Gợi ý cho bạn',
+            subtitle: 'Những sản phẩm được xem nhiều, đánh giá tốt và còn hàng.',
+            products: suggestedProducts,
+            ctaHref: '/?sort=rateCount-decrease',
+            ctaLabel: 'Xem thêm 12 sản phẩm'
+        })}
+        ${renderProductGridSection({
+            title: 'Mua online - Hàng chuẩn, giá mê',
+            subtitle: 'Danh mục nổi bật được gom lại để bạn duyệt nhanh giống trang chủ siêu thị điện máy.',
+            products: newArrivalProducts,
+            ctaHref: '/?promo=moiramat',
+            ctaLabel: 'Xem thêm hàng mới',
+            pills: brandPills
+        })}
+    `;
+
+    if (shouldUseViewedSlider) {
+        const viewedSlider = $('.viewed-products-slider');
+        if (viewedSlider.length) {
+            viewedSlider.owlCarousel({
+                loop: viewedProducts.length > 5,
+                margin: 10,
+                nav: true,
+                dots: false,
+                autoplay: false,
+                responsive: {
+                    0: { items: 1.1 },
+                    520: { items: 2.1 },
+                    768: { items: 3.1 },
+                    992: { items: 4.1 },
+                    1200: { items: 5 }
+                }
+            });
+        }
+    }
 }
 
 function addKhungSanPham(tenKhung, color, filter, len, ele) {
@@ -538,7 +860,7 @@ function addBanner(img, link) {
 // Thêm hàm mới này để tải banner từ API
 async function loadBanners() {
     try {
-        const response = await fetch('/api/banners');
+        const response = await fetch('/api/banners?type=hero');
         if (!response.ok) {
             console.error("Lỗi khi tải banner: " + response.status);
             return;
@@ -686,43 +1008,59 @@ async function loadTopProducts() {
         const container = document.getElementById('top-products-container');
         if (!container) return;
 
+        if (topProducts.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
         let html = `
-        <div class="khungSanPham" style="border-color:#288ad6">
-            <h3 class="tenKhung" style="background-image:linear-gradient(120deg,#288ad6 0%,#1e6f9a 50%,#288ad6 100%)">
-                <i class="fa fa-trophy" style="color:#ffb300"></i> BẢNG XẾP HẠNG TOP 10 SẢN PHẨM BÁN CHẠY NHẤT
+        <div class="khungSanPham top-products-section">
+            <h3 class="tenKhung top-products-title">
+                <i class="fa fa-trophy"></i> SẢN PHẨM BÁN CHẠY
             </h3>
-            <div class="top-products-list">`;
-// File: doannhom12/static/js/trangchu.js
+            <div class="top-products-slider owl-carousel owl-theme" id="top-products-carousel">`;
 
-// ... bên trong hàm loadTopProducts() ...
-topProducts.forEach((sp, idx) => {
-    let imgSrc = sp.img && !sp.img.startsWith('http') ? `/static/img/products/${sp.img}` : sp.img;
-    let priceNum = Number(String(sp.price).replace(/\D/g, ''));
+        topProducts.forEach((sp, idx) => {
+            let imgSrc = sp.img && !sp.img.startsWith('http') ? `/static/img/products/${sp.img}` : sp.img;
+            let priceNum = Number(String(sp.price).replace(/\D/g, ''));
+            let detailLink = `/chitietsanpham?masp=${sp.masp}`;
 
-    // TẠO ĐƯỜNG DẪN ĐẾN TRANG CHI TIẾT SẢN PHẨM
-    let detailLink = `/chitietsanpham?masp=${sp.masp}`;
-
-    // THÊM THẺ <a> BAO BỌC BÊN NGOÀI VÀ SỬ DỤNG CLASS "top-product-link" ĐÃ CÓ SẴN
-    html += `
-        <a href="${detailLink}" class="top-product-link">
-            <div class="top-product-card">
-                <div class="top-product-rank top-product-rank-${idx+1}">#${idx+1}</div>
-                <div class="top-product-img-wrap">
-                    <img src="${imgSrc}" alt="${sp.name}" class="top-product-img">
+            html += `
+                <div class="item">
+                    <a href="${detailLink}" class="top-product-card-modern">
+                        <div class="rank-badge rank-${idx+1}">#${idx+1}</div>
+                        <div class="img-wrap">
+                            <img src="${imgSrc}" alt="${sp.name}">
+                        </div>
+                        <div class="info">
+                            <h4 title="${sp.name}">${sp.name}</h4>
+                            <div class="sold-count">Đã bán: <b>${sp.total_sold}</b></div>
+                            <div class="price">${priceNum.toLocaleString('vi-VN')}₫</div>
+                        </div>
+                    </a>
                 </div>
-                <div class="top-product-info">
-                    <div class="top-product-name" title="${sp.name}">${sp.name}</div>
-                    <div class="top-product-sold">Đã bán: <b>${sp.total_sold}</b></div>
-                    <div class="top-product-price">${priceNum.toLocaleString('vi-VN')}₫</div>
-                </div>
-            </div>
-        </a>
-    `;
-});
-// ...
+            `;
+        });
 
         html += `</div></div>`;
         container.innerHTML = html;
+
+        // Kích hoạt slider
+        setTimeout(() => {
+            $('#top-products-carousel').owlCarousel({
+                loop: false, // Tắt vòng lặp để giữ đúng thứ tự #1 #2 #3...
+                margin: 15,
+                nav: true,
+                dots: false,
+                autoplay: false, // Tắt tự động chạy để người dùng tự xem rank
+                responsive: {
+                    0: { items: 2 },
+                    600: { items: 3 },
+                    1000: { items: 5 }
+                }
+            });
+        }, 100);
+
     } catch (e) {
         console.error('Lỗi khi tải top sản phẩm:', e);
     }

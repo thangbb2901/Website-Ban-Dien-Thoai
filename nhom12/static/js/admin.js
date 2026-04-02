@@ -24,7 +24,7 @@ async function callAPI(endpoint, options = {}) {
         return await response.json();
     } catch (error) {
         console.error(`Lỗi khi gọi API ${options.method || 'GET'} ${API_BASE_URL}${endpoint}:`, error);
-        if(typeof addAlertBox === 'function') addAlertBox(`Lỗi API: ${error.message}`, '#f55', '#fff', 5000);
+        if (typeof addAlertBox === 'function') addAlertBox(`Lỗi API: ${error.message}`, '#f55', '#fff', 5000);
         else alert(`Lỗi API: ${error.message}`);
         throw error; // Ném lỗi ra ngoài để hàm gọi có thể xử lý nếu cần
     }
@@ -42,12 +42,12 @@ window.onload = async function () {
         await addTableProducts();
         await addTableDonHang();
         await addTableKhachHang();
-        await addTableBanners();
+        await addTableBanners('hero');
         await addThongKe();
         openTab('Trang Chủ'); // Mở tab mặc định
     } catch (error) {
         console.error("Lỗi khi khởi tạo các bảng dữ liệu admin:", error);
-        if(typeof addAlertBox === 'function') {
+        if (typeof addAlertBox === 'function') {
             addAlertBox('Không thể tải đầy đủ dữ liệu trang admin.', '#f55', '#fff', 6000);
         }
     }
@@ -79,7 +79,7 @@ function addChart(id, chartOption) {
     var ctx = canvas.getContext('2d');
     try {
         new Chart(ctx, chartOption); // Bỏ biến chart không dùng
-    } catch(e) {
+    } catch (e) {
         console.error("Lỗi khi tạo chart:", e);
     }
 }
@@ -88,8 +88,8 @@ function addChart(id, chartOption) {
 
 // Bảng màu và hàm hexToRgba giữ nguyên
 const CHART_COLORS = [
-    '#4c51bf', '#63b3ed', '#4fd1c5', '#48bb78', '#ecc94b', 
-    '#f56565', '#ed8936', '#d53f8c', '#805ad5', '#38b2ac', 
+    '#4c51bf', '#63b3ed', '#4fd1c5', '#48bb78', '#ecc94b',
+    '#f56565', '#ed8936', '#d53f8c', '#805ad5', '#38b2ac',
     '#f6ad55', '#9f7aea'
 ];
 
@@ -125,7 +125,7 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
             text: title
         },
         legend: {
-            display: false 
+            display: false
         },
         tooltips: {
             backgroundColor: 'rgba(26, 32, 44, 0.9)',
@@ -137,10 +137,10 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
             displayColors: true,
             callbacks: {
                 // === THAY ĐỔI CHÍNH LÀ Ở ĐÂY ===
-                label: function(tooltipItem, chart) {
+                label: function (tooltipItem, chart) {
                     // Lấy giá trị số của dữ liệu
                     let value = chart.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
-                    
+
                     // Lấy nhãn của hãng (ví dụ: Samsung, Apple)
                     let label = chart.labels[tooltipItem.index] || '';
 
@@ -187,7 +187,7 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
     if (charType === 'doughnut') {
         options.cutoutPercentage = 60;
     }
-     if (charType === 'pie') {
+    if (charType === 'pie') {
         options.cutoutPercentage = 0;
     }
 
@@ -212,7 +212,7 @@ async function addThongKe() {
         const products = await callAPI(`/products`);
         let companySales = {};    // Số lượng bán ra theo hãng
         let companyRevenue = {};  // Doanh thu theo hãng
-        
+
         if (!Array.isArray(orders) || !Array.isArray(products)) {
             console.warn("Dữ liệu đơn hàng hoặc sản phẩm không hợp lệ cho thống kê.");
             throw new Error("Dữ liệu không hợp lệ");
@@ -226,7 +226,7 @@ async function addThongKe() {
                     if (product) {
                         const company = product.company || 'Khác';
                         companySales[company] = (companySales[company] || 0) + (Number(item.quantity) || 0);
-                        
+
                         // Sử dụng giá lúc mua hàng (price_at_purchase) để tính doanh thu
                         const priceAtPurchase = item.price_at_purchase ? stringToNum(item.price_at_purchase.toString()) : 0;
                         companyRevenue[company] = (companyRevenue[company] || 0) + (priceAtPurchase * (Number(item.quantity) || 0));
@@ -286,11 +286,12 @@ function openTab(nameTab) {
     let tabFound = false;
     let targetTabElement;
     switch (nameTab) {
-        case 'Trang Chủ':   targetTabElement = main.querySelector('.home'); break;
-        case 'Sản Phẩm':    targetTabElement = main.querySelector('.sanpham'); break;
-        case 'Đơn Hàng':    targetTabElement = main.querySelector('.donhang'); break;
-        case 'Khách Hàng':  targetTabElement = main.querySelector('.khachhang'); break;
-        case 'Quản lý Banner':  targetTabElement = main.querySelector('.banner-management'); break;
+        case 'Trang Chủ': targetTabElement = main.querySelector('.home'); break;
+        case 'Sản Phẩm': targetTabElement = main.querySelector('.sanpham'); break;
+        case 'Đơn Hàng': targetTabElement = main.querySelector('.donhang'); break;
+        case 'Khách Hàng': targetTabElement = main.querySelector('.khachhang'); break;
+        case 'Quản lý Banner': targetTabElement = main.querySelector('.banner-management'); break;
+        case 'Banner Giữa Trang': targetTabElement = main.querySelector('.inline-banner-management'); break;
     }
 
     if (targetTabElement) {
@@ -299,23 +300,46 @@ function openTab(nameTab) {
     }
     else { // Fallback
         const homeFallback = main.querySelector('.home');
-        if(homeFallback) homeFallback.style.display = 'block';
+        if (homeFallback) homeFallback.style.display = 'block';
     }
-    
+
     if (!tabFound) { // Fallback về Trang Chủ nếu không tìm thấy tab
         const homeFallback = main.querySelector('.home');
-        if(homeFallback) homeFallback.style.display = 'block';
+        if (homeFallback) homeFallback.style.display = 'block';
+    }
+
+    if (nameTab === 'Quản lý Banner') {
+        addTableBanners('hero');
+    }
+    if (nameTab === 'Banner Giữa Trang') {
+        addTableBanners('inline');
     }
 }
-async function addTableBanners() {
+
+function getBannerTypeSuffix(type) {
+    return type === 'inline' ? '_inline' : '';
+}
+
+function getBannerTableSelector(type) {
+    return type === 'inline' ? '.inline-banner-management .table-content' : '.banner-management .table-content';
+}
+
+function getBannerModalId(type, mode) {
+    if (type === 'inline') {
+        return mode === 'edit' ? 'khungSuaInlineBanner' : 'khungThemInlineBanner';
+    }
+    return mode === 'edit' ? 'khungSuaBanner' : 'khungThemBanner';
+}
+
+async function addTableBanners(type = 'hero') {
     let bannersData = [];
     try {
-        bannersData = await callAPI(`/banners`); // API đã trả về image_url
+        bannersData = await callAPI(`/banners?type=${encodeURIComponent(type)}`); // API đã trả về image_url
     } catch (error) {
         // Lỗi đã được callAPI xử lý, có thể thêm log ở đây nếu muốn
     }
 
-    var tc = document.querySelector('.banner-management .table-content');
+    var tc = document.querySelector(getBannerTableSelector(type));
     if (!tc) return;
 
     var s = `<table class="table-outline table-content table-border">
@@ -340,16 +364,16 @@ async function addTableBanners() {
                 <td>${i + 1}</td>
                 <td><img src="${banner.image_url}" alt="${banner.alt_text || 'Banner'}" style="max-width: 200px; max-height: 100px; object-fit: contain; border-radius:3px; border: 1px solid #ddd;"></td>
                 <td>${banner.alt_text || 'N/A'}</td>
-                <td>${banner.link_url ? `<a href="${banner.link_url}" target="_blank" title="${banner.link_url}">${banner.link_url.length > 20 ? banner.link_url.substring(0,20) + '...' : banner.link_url}</a>` : 'N/A'}</td>
+                <td>${banner.link_url ? `<a href="${banner.link_url}" target="_blank" title="${banner.link_url}">${banner.link_url.length > 20 ? banner.link_url.substring(0, 20) + '...' : banner.link_url}</a>` : 'N/A'}</td>
                 <td>${banner.display_order}</td>
                 <td><span class="status-label ${banner.is_active ? 'status-active' : 'status-locked'}">${banner.is_active ? 'Hoạt động' : 'Ẩn'}</span></td>
                 <td>
                     <div class="tooltip" style="display:inline-block; margin-right:5px;">
-                        <i class="fa fa-pencil" style="color: #ffc107; cursor:pointer;" onclick="addKhungSuaBanner(${banner.banner_id})"></i>
+                        <i class="fa fa-pencil" style="color: #ffc107; cursor:pointer;" onclick="addKhungSuaBanner(${banner.banner_id}, '${type}')"></i>
                         <span class="tooltiptext">Sửa</span>
                     </div>
                     <div class="tooltip" style="display:inline-block;">
-                        <i class="fa fa-trash" style="color: #dc3545; cursor:pointer;" onclick="xoaBanner(${banner.banner_id}, '${banner.filename.replace(/'/g, "\\'")}')"></i>
+                        <i class="fa fa-trash" style="color: #dc3545; cursor:pointer;" onclick="xoaBanner(${banner.banner_id}, '${banner.filename.replace(/'/g, "\\'")}', '${type}')"></i>
                         <span class="tooltiptext">Xóa</span>
                     </div>
                 </td>
@@ -373,52 +397,54 @@ function previewImage(input, previewId) {
         // preview.src = '/static/img/default-banner.png'; // Cần tạo file này
     }
 }
-function openThemBanner() {
-    const khungThem = document.getElementById('khungThemBanner');
-    if(khungThem) {
+function openThemBanner(type = 'hero') {
+    const suffix = getBannerTypeSuffix(type);
+    const khungThem = document.getElementById(getBannerModalId(type, 'add'));
+    if (khungThem) {
         // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH TẠI ĐÂY (nếu có)
         const defaultBannerImg = '/static/img/banners/default-banner.png'; // Giả sử bạn có ảnh default trong thư mục banners
-                                                                        // Hoặc '/static/img/default-banner.png' nếu nó nằm ngoài
+        // Hoặc '/static/img/default-banner.png' nếu nó nằm ngoài
         khungThem.innerHTML = `
             <span class="close" onclick="this.parentElement.style.transform = 'scale(0)';">&times;</span>
-            <form id="formThemBanner" onsubmit="return false;" enctype="multipart/form-data">
+            <form id="formThemBanner${suffix}" onsubmit="return false;" enctype="multipart/form-data">
                 <table class="overlayTable table-outline table-content table-header">
-                    <tr><th colspan="2">Thêm Banner Mới</th></tr>
+                    <tr><th colspan="2">${type === 'inline' ? 'Thêm Banner Giữa Trang' : 'Thêm Banner Mới'}</th></tr>
                     <tr>
                         <td>Ảnh Banner (PNG, JPG, GIF, WEBP):</td>
                         <td>
-                            <img id="themBannerPreview" src="${defaultBannerImg}" alt="Xem trước banner" style="max-width:250px; max-height:125px; margin-bottom:10px; border-radius:3px; object-fit:contain; border:1px solid #ccc;">
-                            <input type="file" name="banner_image_them" id="banner_image_them" accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewImage(this, 'themBannerPreview')" required>
+                            <img id="themBannerPreview${suffix}" src="${defaultBannerImg}" alt="Xem trước banner" style="max-width:250px; max-height:125px; margin-bottom:10px; border-radius:3px; object-fit:contain; border:1px solid #ccc;">
+                            <input type="file" name="banner_image_them" id="banner_image_them${suffix}" accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewImage(this, 'themBannerPreview${suffix}')" required>
                         </td>
                     </tr>
-                    <tr><td>Alt Text (mô tả ảnh):</td><td><input type="text" name="alt_text_them" id="alt_text_them" style="width:95%;"></td></tr>
-                    <tr><td>Link URL (khi click banner, nếu có):</td><td><input type="url" name="link_url_them" id="link_url_them" placeholder="https://vidu.com/trang-dich" style="width:95%;"></td></tr>
-                    <tr><td>Thứ tự hiển thị (số nhỏ lên trước):</td><td><input type="number" name="display_order_them" id="display_order_them" value="0" style="width:80px;"></td></tr>
+                    <tr><td>Alt Text (mô tả ảnh):</td><td><input type="text" name="alt_text_them" id="alt_text_them${suffix}" style="width:95%;"></td></tr>
+                    <tr><td>Link URL (khi click banner, nếu có):</td><td><input type="url" name="link_url_them" id="link_url_them${suffix}" placeholder="https://vidu.com/trang-dich" style="width:95%;"></td></tr>
+                    <tr><td>Thứ tự hiển thị (số nhỏ lên trước):</td><td><input type="number" name="display_order_them" id="display_order_them${suffix}" value="0" style="width:80px;"></td></tr>
                     <tr>
                         <td>Trạng thái:</td>
                         <td>
-                            <select name="is_active_them" id="is_active_them" style="padding:5px;">
+                            <select name="is_active_them" id="is_active_them${suffix}" style="padding:5px;">
                                 <option value="true" selected>Hoạt động (hiển thị)</option>
                                 <option value="false">Ẩn (không hiển thị)</option>
                             </select>
                         </td>
                     </tr>
-                    <tr><td colspan="2" class="table-footer"><button type="button" onclick="themBanner()">THÊM BANNER</button></td></tr>
+                    <tr><td colspan="2" class="table-footer"><button type="button" onclick="themBanner('${type}')">THÊM BANNER</button></td></tr>
                 </table>
             </form>
         `;
         khungThem.style.transform = 'scale(1)';
         const form = khungThem.querySelector('form');
-        if (form) form.reset(); 
-        document.getElementById('themBannerPreview').src = defaultBannerImg;
+        if (form) form.reset();
+        document.getElementById(`themBannerPreview${suffix}`).src = defaultBannerImg;
     }
 }
 
-async function themBanner() {
-    const form = document.getElementById('formThemBanner');
+async function themBanner(type = 'hero') {
+    const suffix = getBannerTypeSuffix(type);
+    const form = document.getElementById(`formThemBanner${suffix}`);
     if (!form) return;
 
-    const bannerImageInput = document.getElementById('banner_image_them');
+    const bannerImageInput = document.getElementById(`banner_image_them${suffix}`);
     if (!bannerImageInput || !bannerImageInput.files || bannerImageInput.files.length === 0) {
         addAlertBox("Vui lòng chọn một file ảnh cho banner.", '#f55', '#fff', 3000);
         return;
@@ -426,10 +452,11 @@ async function themBanner() {
 
     const formData = new FormData();
     formData.append('banner_image', bannerImageInput.files[0]);
-    formData.append('alt_text', document.getElementById('alt_text_them').value);
-    formData.append('link_url', document.getElementById('link_url_them').value);
-    formData.append('display_order', document.getElementById('display_order_them').value);
-    formData.append('is_active', document.getElementById('is_active_them').value); // Gửi dạng 'true'/'false'
+    formData.append('alt_text', document.getElementById(`alt_text_them${suffix}`).value);
+    formData.append('link_url', document.getElementById(`link_url_them${suffix}`).value);
+    formData.append('display_order', document.getElementById(`display_order_them${suffix}`).value);
+    formData.append('is_active', document.getElementById(`is_active_them${suffix}`).value); // Gửi dạng 'true'/'false'
+    formData.append('banner_type', type);
 
     try {
         const addedBanner = await callAPI('/banners', {
@@ -437,19 +464,21 @@ async function themBanner() {
             body: formData, // Browser tự đặt Content-Type là multipart/form-data
         });
         addAlertBox(`Thêm banner "${addedBanner.filename}" thành công.`, '#17c671', '#fff', 3000);
-        await addTableBanners(); // Tải lại bảng
-        document.getElementById('khungThemBanner').style.transform = 'scale(0)';
+        await addTableBanners(type); // Tải lại bảng
+        document.getElementById(getBannerModalId(type, 'add')).style.transform = 'scale(0)';
     } catch (error) {
         // Lỗi đã được callAPI xử lý (có alert rồi)
     }
 }
 
 let currentEditingBannerData = null; // Lưu trữ dữ liệu banner đang sửa
+let currentEditingBannerType = 'hero';
 
-async function addKhungSuaBanner(bannerId) {
+async function addKhungSuaBanner(bannerId, type = 'hero') {
     try {
-        const banners = await callAPI('/banners'); 
+        const banners = await callAPI(`/banners?type=${encodeURIComponent(type)}`);
         currentEditingBannerData = banners.find(b => b.banner_id === bannerId);
+        currentEditingBannerType = type;
 
         if (!currentEditingBannerData) {
             addAlertBox("Không tìm thấy banner để sửa.", '#f55', '#fff', 4000);
@@ -459,37 +488,38 @@ async function addKhungSuaBanner(bannerId) {
         addAlertBox("Lỗi khi tải thông tin banner để sửa.", '#f55', '#fff', 4000);
         return;
     }
-    
-    const khungSua = document.getElementById('khungSuaBanner');
-    if(khungSua) {
+
+    const suffix = getBannerTypeSuffix(type);
+    const khungSua = document.getElementById(getBannerModalId(type, 'edit'));
+    if (khungSua) {
         // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH TẠI ĐÂY (nếu currentEditingBannerData.image_url không có)
-        const bannerImgSrc = currentEditingBannerData.image_url || '/static/img/banners/default-banner.png'; 
+        const bannerImgSrc = currentEditingBannerData.image_url || '/static/img/banners/default-banner.png';
         khungSua.innerHTML = `
             <span class="close" onclick="this.parentElement.style.transform = 'scale(0)'; currentEditingBannerData = null;">&times;</span>
-            <form id="formSuaBanner" onsubmit="return false;" enctype="multipart/form-data">
-                <input type="hidden" id="banner_id_sua" value="${currentEditingBannerData.banner_id}">
+            <form id="formSuaBanner${suffix}" onsubmit="return false;" enctype="multipart/form-data">
+                <input type="hidden" id="banner_id_sua${suffix}" value="${currentEditingBannerData.banner_id}">
                 <table class="overlayTable table-outline table-content table-header">
                     <tr><th colspan="2">Sửa Banner: ${currentEditingBannerData.filename}</th></tr>
                     <tr>
                         <td>Ảnh Banner (Để trống nếu không muốn đổi):</td>
                         <td>
-                            <img id="suaBannerPreview" src="${bannerImgSrc}" alt="Xem trước banner" style="max-width:250px; max-height:125px; margin-bottom:10px; border-radius:3px; object-fit:contain; border:1px solid #ccc;">
-                            <input type="file" name="banner_image_sua" id="banner_image_sua" accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewImage(this, 'suaBannerPreview')">
+                            <img id="suaBannerPreview${suffix}" src="${bannerImgSrc}" alt="Xem trước banner" style="max-width:250px; max-height:125px; margin-bottom:10px; border-radius:3px; object-fit:contain; border:1px solid #ccc;">
+                            <input type="file" name="banner_image_sua" id="banner_image_sua${suffix}" accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewImage(this, 'suaBannerPreview${suffix}')">
                         </td>
                     </tr>
-                    <tr><td>Alt Text:</td><td><input type="text" name="alt_text_sua" id="alt_text_sua" value="${currentEditingBannerData.alt_text || ''}" style="width:95%;"></td></tr>
-                    <tr><td>Link URL:</td><td><input type="url" name="link_url_sua" id="link_url_sua" value="${currentEditingBannerData.link_url || ''}" placeholder="https://vidu.com/trang-dich" style="width:95%;"></td></tr>
-                    <tr><td>Thứ tự hiển thị:</td><td><input type="number" name="display_order_sua" id="display_order_sua" value="${currentEditingBannerData.display_order}" style="width:80px;"></td></tr>
+                    <tr><td>Alt Text:</td><td><input type="text" name="alt_text_sua" id="alt_text_sua${suffix}" value="${currentEditingBannerData.alt_text || ''}" style="width:95%;"></td></tr>
+                    <tr><td>Link URL:</td><td><input type="url" name="link_url_sua" id="link_url_sua${suffix}" value="${currentEditingBannerData.link_url || ''}" placeholder="https://vidu.com/trang-dich" style="width:95%;"></td></tr>
+                    <tr><td>Thứ tự hiển thị:</td><td><input type="number" name="display_order_sua" id="display_order_sua${suffix}" value="${currentEditingBannerData.display_order}" style="width:80px;"></td></tr>
                     <tr>
                         <td>Trạng thái:</td>
                         <td>
-                            <select name="is_active_sua" id="is_active_sua" style="padding:5px;">
+                            <select name="is_active_sua" id="is_active_sua${suffix}" style="padding:5px;">
                                 <option value="true" ${currentEditingBannerData.is_active ? 'selected' : ''}>Hoạt động</option>
                                 <option value="false" ${!currentEditingBannerData.is_active ? 'selected' : ''}>Ẩn</option>
                             </select>
                         </td>
                     </tr>
-                    <tr><td colspan="2" class="table-footer"><button type="button" onclick="suaBanner()">LƯU THAY ĐỔI</button></td></tr>
+                    <tr><td colspan="2" class="table-footer"><button type="button" onclick="suaBanner('${type}')">LƯU THAY ĐỔI</button></td></tr>
                 </table>
             </form>
         `;
@@ -497,25 +527,27 @@ async function addKhungSuaBanner(bannerId) {
     }
 }
 
-async function suaBanner() {
-    const form = document.getElementById('formSuaBanner');
+async function suaBanner(type = 'hero') {
+    const suffix = getBannerTypeSuffix(type);
+    const form = document.getElementById(`formSuaBanner${suffix}`);
     if (!form || !currentEditingBannerData) {
         addAlertBox("Không có dữ liệu banner để cập nhật.", '#f55', '#fff', 3000);
         return;
     }
 
-    const bannerId = document.getElementById('banner_id_sua').value;
-    const bannerImageInput = document.getElementById('banner_image_sua');
+    const bannerId = document.getElementById(`banner_id_sua${suffix}`).value;
+    const bannerImageInput = document.getElementById(`banner_image_sua${suffix}`);
 
     const formData = new FormData();
     // Chỉ thêm ảnh nếu người dùng chọn file mới
     if (bannerImageInput && bannerImageInput.files && bannerImageInput.files.length > 0) {
         formData.append('banner_image', bannerImageInput.files[0]);
     }
-    formData.append('alt_text', document.getElementById('alt_text_sua').value);
-    formData.append('link_url', document.getElementById('link_url_sua').value);
-    formData.append('display_order', document.getElementById('display_order_sua').value);
-    formData.append('is_active', document.getElementById('is_active_sua').value);
+    formData.append('alt_text', document.getElementById(`alt_text_sua${suffix}`).value);
+    formData.append('link_url', document.getElementById(`link_url_sua${suffix}`).value);
+    formData.append('display_order', document.getElementById(`display_order_sua${suffix}`).value);
+    formData.append('is_active', document.getElementById(`is_active_sua${suffix}`).value);
+    formData.append('banner_type', type);
 
     try {
         const updatedBanner = await callAPI(`/banners/${bannerId}`, {
@@ -523,15 +555,15 @@ async function suaBanner() {
             body: formData,
         });
         addAlertBox(`Sửa banner ID ${bannerId} (${updatedBanner.filename}) thành công.`, '#17c671', '#fff', 3000);
-        await addTableBanners(); // Tải lại bảng
-        document.getElementById('khungSuaBanner').style.transform = 'scale(0)';
+        await addTableBanners(type); // Tải lại bảng
+        document.getElementById(getBannerModalId(type, 'edit')).style.transform = 'scale(0)';
         currentEditingBannerData = null;
     } catch (error) {
         // Lỗi đã được callAPI xử lý
     }
 }
 
-async function xoaBanner(bannerId, bannerFilename) {
+async function xoaBanner(bannerId, bannerFilename, type = 'hero') {
     if (!bannerId) {
         addAlertBox('ID banner không hợp lệ.', '#f55', '#fff', 3000);
         return;
@@ -542,7 +574,7 @@ async function xoaBanner(bannerId, bannerFilename) {
                 method: 'DELETE',
             });
             addAlertBox(`Xóa banner ${bannerFilename || 'ID ' + bannerId} thành công.`, '#17c671', '#fff', 3000);
-            await addTableBanners(); // Tải lại bảng
+            await addTableBanners(type); // Tải lại bảng
         } catch (error) {
             // Lỗi đã được callAPI xử lý
         }
@@ -556,13 +588,13 @@ async function addTableProducts() {
         productsData = await callAPI(`/products`);
         // Xử lý lại đường dẫn ảnh nếu API không trả về đường dẫn tuyệt đối /static/...
         if (Array.isArray(productsData)) {
-             productsData = productsData.map(p => {
+            productsData = productsData.map(p => {
                 if (p.img && !p.img.startsWith('/static/') && !p.img.startsWith('http')) {
-                     let imageName = p.img.includes('/') ? p.img.split('/').pop() : p.img;
-                     p.img = `/static/img/products/${imageName}`;
+                    let imageName = p.img.includes('/') ? p.img.split('/').pop() : p.img;
+                    p.img = `/static/img/products/${imageName}`;
                 } else if (p.img && p.img.startsWith('img/products')) { // Xử lý cấu trúc cũ
-                     let imageName = p.img.split('/').pop();
-                     p.img = `/static/img/products/${imageName}`;
+                    let imageName = p.img.split('/').pop();
+                    p.img = `/static/img/products/${imageName}`;
                 }
                 return p;
             });
@@ -583,7 +615,7 @@ async function addTableProducts() {
                         <th style="width: 35%" onclick="sortProductsTable('ten')">Tên <i class="fa fa-sort"></i></th>
                         <th style="width: 10%" onclick="sortProductsTable('gia')">Giá <i class="fa fa-sort"></i></th>
                         <th style="width: 15%" onclick="sortProductsTable('hang')">Hãng <i class="fa fa-sort"></i></th>
-                        <th style="width: 10%" onclick="sortProductsTable('khuyenmai')">Khuyến mãi <i class="fa fa-sort"></i></th>
+                        <th style="width: 10%" onclick="sortProductsTable('soluong')">Số lượng <i class="fa fa-sort"></i></th>
                         <th style="width: 15%">Hành động</th>
                     </tr>
                 </thead>
@@ -593,7 +625,6 @@ async function addTableProducts() {
         s += `<tr><td colspan="7" style="text-align:center;">Không có sản phẩm nào.</td></tr>`;
     } else {
         productsData.forEach((p, i) => { // Dùng forEach và let/const
-            let promoString = (p.promo && typeof p.promo === 'object') ? promoToStringValue(p.promo) : '';
             // SỬA ĐỔI: Link chi tiết sản phẩm và đường dẫn ảnh
             let detailLink = `/chitietsanpham?masp=${p.masp || ''}`;
             let imgSrc = p.img || '/static/img/default.png'; // Ảnh mặc định đã sửa
@@ -607,7 +638,7 @@ async function addTableProducts() {
                 </td>
                 <td style="width: 10%">${p.price || '0'}</td>
                 <td style="width: 15%">${p.company || 'N/A'}</td>
-                <td style="width: 10%">${promoString}</td>
+                <td style="width: 10%">${Number(p.quantity) || 0}</td>
                 <td style="width: 15%">
                     <div class="tooltip" style="display:inline-block; margin-right:5px;">
                         <i class="fa fa-pencil" style="color: #ffc107; cursor:pointer;" onclick="addKhungSuaSanPham('${p.masp}')"></i>
@@ -632,9 +663,9 @@ function timKiemSanPham(inp) {
 
     var kieuTim = kieuTimSelect.value;
     var text = inp.value.toLowerCase();
-    
+
     var columnIndex;
-    switch(kieuTim) {
+    switch (kieuTim) {
         case 'ma': columnIndex = 1; break;
         case 'ten': columnIndex = 2; break;
         // Thêm các case khác nếu có (ví dụ hãng)
@@ -664,7 +695,7 @@ function timKiemSanPham(inp) {
 
 function openThemSanPham() { // Đổi tên hàm cho nhất quán
     const khungThem = document.getElementById('khungThemSanPham');
-    if(khungThem) {
+    if (khungThem) {
         khungThem.style.transform = 'scale(1)';
         // Reset form (nếu có id cho form)
         const form = khungThem.querySelector('table'); // Hoặc form nếu table nằm trong form
@@ -675,7 +706,7 @@ function openThemSanPham() { // Đổi tên hàm cho nhất quán
             const selects = khungThem.querySelectorAll('select');
             selects.forEach(select => select.selectedIndex = 0);
             const imgPreview = khungThem.querySelector('#anhDaiDienSanPhamThem');
-            if(imgPreview) imgPreview.src = '/static/img/default.png'; // Ảnh default
+            if (imgPreview) imgPreview.src = '/static/img/default.png'; // Ảnh default
         }
         autoMaSanPham(); // Gọi để tạo mã gợi ý
     }
@@ -712,7 +743,7 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
         addAlertBox('Tên sản phẩm, hãng, và giá không được để trống.', '#f55', '#fff', 4000);
         return null;
     }
-    
+
     // === BẮT ĐẦU PHẦN SỬA LỖI CHỈ SỐ ===
     var detail = {};
     detail.screen = getValueFromInput(11);      // Hàng 12 -> trIndex 11
@@ -734,13 +765,14 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
         star: getValueFromInput(6, 'input[type="number"]') || 0,
         rateCount: getValueFromInput(7, 'input[type="number"]') || 0,
         promo: {
-            name: getValueFromInput(8, 'select', true),
-            value: getValueFromInput(9)
+            "name": getValueFromInput(8, 'select', true),
+            "value": getValueFromInput(9)
         },
+        quantity: getValueFromInput(10, 'input[type="number"]') || 0,
         detail: detail
     };
     // === KẾT THÚC PHẦN SỬA LỖI CHỈ SỐ ===
-    
+
     // Thêm masp nếu là form thêm mới
     if (!isEditMode) {
         productData.masp = khung.querySelector('#maspThem') ? khung.querySelector('#maspThem').value : '';
@@ -767,7 +799,12 @@ async function themSanPham() {
     if (newSpData.img_file) {
         formData.append('product_image', newSpData.img_file);
     }
-    
+
+    // Thêm số lượng trực tiếp nếu chưa có trong loop
+    if (newSpData.quantity !== undefined) {
+        formData.append('quantity', newSpData.quantity);
+    }
+
     try {
         const addedProduct = await callAPI(`/products`, {
             method: 'POST',
@@ -795,9 +832,13 @@ async function suaSanPham(originalMasp) {
             formData.append(key, spData[key]);
         }
     }
-    
+
     if (spData.img_file) {
         formData.append('product_image', spData.img_file);
+    }
+
+    if (spData.quantity !== undefined) {
+        formData.append('quantity', spData.quantity);
     }
 
     try {
@@ -827,16 +868,16 @@ function autoMaSanPham(companyValue) {
     }
     const randomNumber = Math.floor(1000 + Math.random() * 9000); // Số ngẫu nhiên 4 chữ số
     const suggestedMasp = companyPrefix + randomNumber;
-    
+
     const maspInputThem = document.getElementById('maspThem');
     if (maspInputThem && !maspInputThem.closest('#khungSuaSanPham')) { // Chỉ set cho form thêm mới
-         maspInputThem.value = suggestedMasp;
+        maspInputThem.value = suggestedMasp;
     }
 }
 
 async function xoaSanPham(masp, tensp) {
     if (!masp) {
-        if(typeof addAlertBox === 'function') addAlertBox('Mã sản phẩm không hợp lệ.', '#f55', '#fff', 3000);
+        if (typeof addAlertBox === 'function') addAlertBox('Mã sản phẩm không hợp lệ.', '#f55', '#fff', 3000);
         else alert('Mã sản phẩm không hợp lệ.');
         return;
     }
@@ -845,7 +886,7 @@ async function xoaSanPham(masp, tensp) {
             await callAPI(`/products/${masp}`, {
                 method: 'DELETE',
             });
-            if(typeof addAlertBox === 'function') addAlertBox(`Xóa sản phẩm "${tensp}" thành công.`, '#17c671', '#fff', 3000);
+            if (typeof addAlertBox === 'function') addAlertBox(`Xóa sản phẩm "${tensp}" thành công.`, '#17c671', '#fff', 3000);
             else alert(`Xóa sản phẩm "${tensp}" thành công.`);
             await addTableProducts(); // Tải lại bảng
         } catch (error) {
@@ -863,8 +904,8 @@ async function addKhungSuaSanPham(masp) {
     try {
         productToEdit = await callAPI(`/products/${masp}`);
         if (!productToEdit) {
-             if(typeof addAlertBox === 'function') addAlertBox("Không tìm thấy sản phẩm để sửa.", '#f55', '#fff', 4000);
-             else alert("Không tìm thấy sản phẩm để sửa.");
+            if (typeof addAlertBox === 'function') addAlertBox("Không tìm thấy sản phẩm để sửa.", '#f55', '#fff', 4000);
+            else alert("Không tìm thấy sản phẩm để sửa.");
             return;
         }
     } catch (error) {
@@ -909,6 +950,7 @@ async function addKhungSuaSanPham(masp) {
             <option value="moiramat" ${productToEdit.promo && productToEdit.promo.name == 'moiramat' ? 'selected' : ''}>Mới ra mắt</option>
         </select> </td> </tr>
         <tr> <td>Giá trị khuyến mãi:</td> <td><input type="text" value="${(productToEdit.promo && productToEdit.promo.value) || ''}"></td> </tr>
+        <tr> <td>Số lượng kho:</td> <td><input type="number" value="${productToEdit.quantity || 0}" min="0"></td> </tr>
         <tr> <th colspan="2">Thông số kĩ thuật</th> </tr>
         <tr> <td>Màn hình:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.screen) || ''}"></td> </tr>
         <tr> <td>Hệ điều hành:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.os) || ''}"></td> </tr>
@@ -952,31 +994,32 @@ function sortProductsTable(loai) {
     if (!table || !table.tBodies[0]) return;
     var tbody = table.tBodies[0];
     var trs = Array.from(tbody.getElementsByTagName('tr'));
-    
+
     // Lọc bỏ các hàng không phải là hàng dữ liệu (ví dụ: hàng tiêu đề nếu có trong tbody)
     trs = trs.filter(tr => tr.getElementsByTagName('td').length >= 6); // Đảm bảo có đủ cột
 
     quickSort(trs, 0, trs.length - 1, loai, getValueOfTypeInTable_SanPham);
     decrease = !decrease; // Đảo chiều sắp xếp cho lần click sau
-    
+
     // Xóa các hàng cũ và thêm lại các hàng đã sắp xếp
     while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
     trs.forEach(tr => tbody.appendChild(tr));
 }
 
 function getValueOfTypeInTable_SanPham(tr, loai) {
-    if(!tr || !tr.getElementsByTagName) return null;
+    if (!tr || !tr.getElementsByTagName) return null;
     var td = tr.getElementsByTagName('td');
     if (!td || td.length < 6) return null; // Kiểm tra số lượng cột
     try {
         switch (loai) {
             case 'stt': return Number(td[0].textContent);
             case 'masp': return td[1].textContent.toLowerCase();
-            case 'ten': 
+            case 'ten':
                 const aTag = td[2].querySelector('a');
                 return aTag ? aTag.textContent.toLowerCase() : td[2].textContent.toLowerCase();
             case 'gia': return stringToNum(td[3].textContent); // Giả sử stringToNum từ dungchung.js
             case 'hang': return td[4].textContent.toLowerCase();
+            case 'soluong': return Number(td[5].textContent) || 0;
             case 'khuyenmai': return td[5].textContent.toLowerCase();
         }
     } catch (e) {
@@ -1005,7 +1048,7 @@ async function ensureProductsCacheForOrders() {
 async function addTableDonHang() {
     try {
         danhSachDonHangCache = await callAPI(`/orders`);
-        await ensureProductsCacheForOrders(); 
+        await ensureProductsCacheForOrders();
     } catch (error) {
         var tc = document.querySelector('.donhang .table-content');
         if (tc) tc.innerHTML = `<div style="text-align:center; color:red; padding: 20px;">Không thể tải danh sách đơn hàng. Lỗi: ${error.message || 'Không rõ'}</div>`;
@@ -1034,7 +1077,7 @@ async function addTableDonHang() {
         s += `<tr><td colspan="8" style="text-align:center;">Không có đơn hàng nào.</td></tr>`;
     } else {
         // Sắp xếp đơn hàng mới nhất lên đầu (nếu order_date là ISO string)
-        danhSachDonHangCache.sort((a,b) => new Date(b.order_date) - new Date(a.order_date));
+        danhSachDonHangCache.sort((a, b) => new Date(b.order_date) - new Date(a.order_date));
 
         danhSachDonHangCache.forEach((dh, i) => { // Dùng forEach
             var danhSachSPText = "";
@@ -1062,7 +1105,7 @@ async function addTableDonHang() {
                         <i class="fa fa-pencil" style="color: #ffc107; cursor:pointer;" onclick="addKhungSuaDonHang('${dh.order_id}')"></i>
                         <span class="tooltiptext">Sửa</span>
                     </div>`;
-            
+
             const statusActions = {
                 'Đang chờ xử lý': `
                     <div class="tooltip" style="display:inline-block; margin-right: 5px;">
@@ -1107,18 +1150,18 @@ async function addKhungSuaDonHang(orderId) {
     const orderToEdit = danhSachDonHangCache.find(order => order && order.order_id === orderId);
 
     if (!orderToEdit) {
-        if(typeof addAlertBox === 'function') addAlertBox("Không tìm thấy đơn hàng để sửa.", '#f55', '#fff', 4000);
+        if (typeof addAlertBox === 'function') addAlertBox("Không tìm thấy đơn hàng để sửa.", '#f55', '#fff', 4000);
         else alert("Không tìm thấy đơn hàng để sửa.");
         return;
     }
-    await ensureProductsCacheForOrders(); 
+    await ensureProductsCacheForOrders();
 
     let sanPhamHtml = '<div id="orderProductsListToEdit" style="max-height: 200px; overflow-y: auto; border: 1px solid #444; padding:10px; margin-bottom:10px; background-color: #303030; border-radius:3px;">';
     if (orderToEdit.products && orderToEdit.products.length > 0) {
         orderToEdit.products.forEach((item, index) => {
             const productDetail = productsCacheForOrders.find(p => p && p.masp === item.product_masp);
             const productName = productDetail ? productDetail.name : (item.product_name || item.product_masp);
-            const currentPrice = productDetail ? productDetail.price : item.price_at_purchase; 
+            const currentPrice = productDetail ? productDetail.price : item.price_at_purchase;
             const priceForCalc = item.price_at_purchase; // Giá lúc mua
 
             sanPhamHtml += `
@@ -1187,7 +1230,7 @@ async function addKhungSuaDonHang(orderId) {
             </table>
         </form>`;
     khungSuaDonHang.style.transform = 'scale(1)';
-    tinhLaiTongTienKhiSuaDon(); 
+    tinhLaiTongTienKhiSuaDon();
 }
 
 function themSanPhamVaoDonHangTamThoi() {
@@ -1195,7 +1238,7 @@ function themSanPhamVaoDonHangTamThoi() {
     const quantityInput = document.getElementById('quantityProductToAddForOrder');
     const productsListDiv = document.getElementById('orderProductsListToEdit');
 
-    if(!productSelect || !quantityInput || !productsListDiv) return;
+    if (!productSelect || !quantityInput || !productsListDiv) return;
 
     const masp = productSelect.value;
     if (!masp) {
@@ -1203,8 +1246,8 @@ function themSanPhamVaoDonHangTamThoi() {
         return;
     }
     const selectedOption = productSelect.options[productSelect.selectedIndex];
-    const productName = selectedOption.text.split(' - ')[0]; 
-    
+    const productName = selectedOption.text.split(' - ')[0];
+
     let productPriceStr = selectedOption.dataset.price;
     const promoName = selectedOption.dataset.promoName;
     const promoValue = selectedOption.dataset.promoValue;
@@ -1213,7 +1256,7 @@ function themSanPhamVaoDonHangTamThoi() {
     if (promoName && promoName.toLowerCase() === 'giareonline' && promoValue) {
         productPriceStr = promoValue;
     }
-    const productPriceForCalc = stringToNum(productPriceStr); 
+    const productPriceForCalc = stringToNum(productPriceStr);
 
     const quantity = parseInt(quantityInput.value, 10);
 
@@ -1221,7 +1264,7 @@ function themSanPhamVaoDonHangTamThoi() {
         addAlertBox("Số lượng phải là số lớn hơn 0.", "#f55", "#fff", 3000);
         return;
     }
-        
+
     const existingItem = productsListDiv.querySelector(`.order-item-edit[data-masp="${masp}"]`);
     if (existingItem) {
         const existingQuantityInput = existingItem.querySelector('.item-quantity-edit');
@@ -1247,13 +1290,13 @@ function xoaSanPhamKhoiDonHangTamThoi(buttonElement) {
     if (confirm("Bạn có chắc muốn xóa sản phẩm này khỏi đơn hàng đang chỉnh sửa?")) {
         const itemToRemove = buttonElement.closest('.order-item-edit');
         if (itemToRemove) itemToRemove.remove();
-        
+
         const items = document.querySelectorAll('#orderProductsListToEdit .order-item-edit');
         items.forEach((item, index) => {
             const firstSpan = item.querySelector('span:first-child');
-            if(firstSpan) {
-                 const namePart = firstSpan.textContent.split('. ')[1] || '';
-                 firstSpan.textContent = `${index + 1}. ${namePart}`;
+            if (firstSpan) {
+                const namePart = firstSpan.textContent.split('. ')[1] || '';
+                firstSpan.textContent = `${index + 1}. ${namePart}`;
             }
         });
         tinhLaiTongTienKhiSuaDon();
@@ -1268,8 +1311,8 @@ function tinhLaiTongTienKhiSuaDon() {
         const quantityInput = itemDiv.querySelector('.item-quantity-edit');
         if (quantityInput) {
             const quantity = parseInt(quantityInput.value, 10);
-            if (!isNaN(priceAtPurchase) && !isNaN(quantity) && quantity >=0) { // Cho phép số lượng 0 để xóa
-                 newTotalAmount += priceAtPurchase * quantity;
+            if (!isNaN(priceAtPurchase) && !isNaN(quantity) && quantity >= 0) { // Cho phép số lượng 0 để xóa
+                newTotalAmount += priceAtPurchase * quantity;
             }
         }
     });
@@ -1292,7 +1335,7 @@ async function luuDonHangDaSua(orderId) {
     const diaChi = document.getElementById('editOrderDiaChi')?.value.trim();
     const email = document.getElementById('editOrderEmail')?.value.trim();
 
-    if(!newStatus || !hoTen || !soDienThoai || !diaChi) {
+    if (!newStatus || !hoTen || !soDienThoai || !diaChi) {
         addAlertBox("Vui lòng điền đầy đủ thông tin giao hàng và trạng thái.", "#f55", "#fff", 4000);
         return;
     }
@@ -1300,7 +1343,7 @@ async function luuDonHangDaSua(orderId) {
         addAlertBox('Email không hợp lệ.', '#f55', '#fff', 3000);
         return;
     }
-     if (!/^\d{10,11}$/.test(soDienThoai)) { // Kiểm tra SĐT 10-11 số
+    if (!/^\d{10,11}$/.test(soDienThoai)) { // Kiểm tra SĐT 10-11 số
         addAlertBox('Số điện thoại không hợp lệ. Phải có 10-11 chữ số.', '#f55', '#fff', 4000);
         return;
     }
@@ -1309,13 +1352,13 @@ async function luuDonHangDaSua(orderId) {
     const editedProducts = [];
     let newTotalAmount = 0;
     const productItems = document.querySelectorAll('#orderProductsListToEdit .order-item-edit');
-    
+
     productItems.forEach(itemDiv => {
         const masp = itemDiv.dataset.masp;
         const quantityInput = itemDiv.querySelector('.item-quantity-edit');
         const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 0;
-        const priceAtPurchase = parseFloat(itemDiv.dataset.priceAtPurchase); 
-        
+        const priceAtPurchase = parseFloat(itemDiv.dataset.priceAtPurchase);
+
         const productNameSpan = itemDiv.querySelector('span:first-child');
         const productName = productNameSpan ? (productNameSpan.textContent.split('. ')[1] || masp) : masp;
 
@@ -1324,13 +1367,13 @@ async function luuDonHangDaSua(orderId) {
             editedProducts.push({
                 product_masp: masp,
                 quantity: quantity,
-                price_at_purchase: priceAtPurchase.toString(), 
-                product_name: productName 
+                price_at_purchase: priceAtPurchase.toString(),
+                product_name: productName
             });
             newTotalAmount += priceAtPurchase * quantity;
         }
     });
-    
+
     const dataToUpdate = {
         status: newStatus,
         shipping_info: {
@@ -1340,26 +1383,26 @@ async function luuDonHangDaSua(orderId) {
             address: diaChi, // Sử dụng key 'address' thay vì 'diaChi'
             payment_method: orderToEdit.shipping_info?.payment_method || orderToEdit.shipping_info?.phuongThucThanhToan // Giữ nguyên
         },
-        products: editedProducts, 
+        products: editedProducts,
         total_amount: newTotalAmount, // Backend nên tự tính lại tổng tiền dựa trên products và giá hiện tại nếu cần
         // username: orderToEdit.username // username không nên thay đổi qua form này
     };
-    
+
     try {
         await callAPI(`/orders/${orderId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToUpdate)
         });
-        addAlertBox(`Đã cập nhật thông tin đơn hàng ${orderId.substring(0,8)}...`, '#17c671', '#fff', 3000);
-        
+        addAlertBox(`Đã cập nhật thông tin đơn hàng ${orderId.substring(0, 8)}...`, '#17c671', '#fff', 3000);
+
         // Tải lại danh sách đơn hàng để cập nhật cache và bảng
-        await addTableDonHang(); 
+        await addTableDonHang();
         const khungSua = document.getElementById('khungSuaDonHang');
-        if(khungSua) khungSua.style.transform = 'scale(0)';
+        if (khungSua) khungSua.style.transform = 'scale(0)';
 
     } catch (error) {
-         // Lỗi đã được callAPI xử lý và alert
+        // Lỗi đã được callAPI xử lý và alert
     }
 }
 
@@ -1383,7 +1426,7 @@ async function capNhatTrangThaiDonHang(orderId, newStatus) {
 function locDonHangTheoKhoangNgay() {
     var fromDateInput = document.getElementById('fromDate');
     var toDateInput = document.getElementById('toDate');
-    if(!fromDateInput || !toDateInput) return;
+    if (!fromDateInput || !toDateInput) return;
 
     var fromDate = fromDateInput.value;
     var toDate = toDateInput.value;
@@ -1393,8 +1436,8 @@ function locDonHangTheoKhoangNgay() {
         return;
     }
 
-    var fromTime = new Date(fromDate).setHours(0,0,0,0); // Bắt đầu ngày
-    var toTime = new Date(toDate).setHours(23,59,59,999); // Kết thúc ngày
+    var fromTime = new Date(fromDate).setHours(0, 0, 0, 0); // Bắt đầu ngày
+    var toTime = new Date(toDate).setHours(23, 59, 59, 999); // Kết thúc ngày
 
     var table = document.querySelector('.donhang .table-content table tbody');
     if (!table) return;
@@ -1402,7 +1445,7 @@ function locDonHangTheoKhoangNgay() {
 
     let found = false;
     for (var tr of trs) {
-        if (tr.getElementsByTagName('td').length < 6) continue; 
+        if (tr.getElementsByTagName('td').length < 6) continue;
         var ngayDatTd = tr.getElementsByTagName('td')[5]; // Cột ngày đặt
         if (ngayDatTd) {
             var ngayDatText = ngayDatTd.textContent || ngayDatTd.innerText;
@@ -1421,12 +1464,12 @@ function locDonHangTheoKhoangNgay() {
             }
         }
     }
-    if(found) addAlertBox("Đã lọc đơn hàng theo ngày.", "#17a2b8", '#fff', 3000);
+    if (found) addAlertBox("Đã lọc đơn hàng theo ngày.", "#17a2b8", '#fff', 3000);
     else addAlertBox("Không tìm thấy đơn hàng nào trong khoảng ngày đã chọn.", "#ffc107", '#000', 3000);
 }
 
 function timKiemDonHang(inp) {
-    if(!inp) return;
+    if (!inp) return;
     var kieuTimSelect = document.querySelector('select[name="kieuTimDonHang"]');
     if (!kieuTimSelect) return;
 
@@ -1474,7 +1517,7 @@ function sortDonHangTable(loai) {
 }
 
 function getValueOfTypeInTable_DonHang(tr, loai) {
-    if(!tr || !tr.getElementsByTagName) return null;
+    if (!tr || !tr.getElementsByTagName) return null;
     var td = tr.getElementsByTagName('td');
     if (!td || td.length < 7) return null;
     try {
@@ -1484,12 +1527,12 @@ function getValueOfTypeInTable_DonHang(tr, loai) {
             case 'khach': return td[2].textContent.toLowerCase();
             // case 'sanpham': return td[3].textContent.toLowerCase(); // Sắp xếp theo sản phẩm phức tạp, tạm bỏ
             case 'tongtien': return stringToNum(td[4].textContent); // Giả sử stringToNum từ dungchung.js
-            case 'ngay': 
+            case 'ngay':
                 var dateParts = td[5].textContent.split('/');
                 return dateParts.length === 3 ? new Date(dateParts[2], dateParts[1] - 1, dateParts[0]).getTime() : 0;
             case 'trangthai': return td[6].textContent.toLowerCase();
         }
-    } catch(e) {
+    } catch (e) {
         console.error("Lỗi khi lấy giá trị từ bảng đơn hàng:", e, tr, loai);
         return null;
     }
@@ -1571,7 +1614,7 @@ async function addKhungSuaNguoiDung(username) {
             return;
         }
     } catch (error) {
-        return; 
+        return;
     }
 
     var s = `
@@ -1610,12 +1653,12 @@ async function addKhungSuaNguoiDung(username) {
     var khung = document.getElementById('khungSuaNguoiDung');
     if (khung) {
         const tableContent = document.querySelector('.khachhang .table-content');
-        const tableHeader = document.querySelector('.khachhang .table-header'); 
+        const tableHeader = document.querySelector('.khachhang .table-header');
         const tableFooter = document.querySelector('.khachhang .table-footer');
 
-        if(tableContent) tableContent.style.display = 'none';
-        if(tableHeader) tableHeader.style.display = 'none';
-        if(tableFooter) tableFooter.style.display = 'none';
+        if (tableContent) tableContent.style.display = 'none';
+        if (tableHeader) tableHeader.style.display = 'none';
+        if (tableFooter) tableFooter.style.display = 'none';
 
         khung.innerHTML = s;
         khung.style.transform = 'scale(1)';
@@ -1641,10 +1684,10 @@ async function luuThongTinNguoiDung(username) {
     var userData = {
         ho: ho,
         ten: ten,
-        email: email || null 
+        email: email || null
     };
 
-    if (password) { 
+    if (password) {
         userData.pass = password; // Backend sẽ hash mật khẩu này
     }
 
@@ -1655,17 +1698,17 @@ async function luuThongTinNguoiDung(username) {
             body: JSON.stringify(userData)
         });
         addAlertBox(`Cập nhật thông tin người dùng '${username}' thành công.`, '#17c671', '#fff', 3000);
-        await addTableKhachHang(); 
+        await addTableKhachHang();
 
         const tableContent = document.querySelector('.khachhang .table-content');
         const tableHeader = document.querySelector('.khachhang .table-header');
         const tableFooter = document.querySelector('.khachhang .table-footer');
-        if(tableContent) tableContent.style.display='';
-        if(tableHeader) tableHeader.style.display='';
-        if(tableFooter) tableFooter.style.display='';
-        
+        if (tableContent) tableContent.style.display = '';
+        if (tableHeader) tableHeader.style.display = '';
+        if (tableFooter) tableFooter.style.display = '';
+
         const khungSua = document.getElementById('khungSuaNguoiDung');
-        if(khungSua) khungSua.style.transform = 'scale(0)';
+        if (khungSua) khungSua.style.transform = 'scale(0)';
     } catch (error) {
         // Lỗi đã được callAPI xử lý
     }
@@ -1678,9 +1721,9 @@ function openThemNguoiDung() {
         const tableHeader = document.querySelector('.khachhang .table-header');
         const tableFooter = document.querySelector('.khachhang .table-footer');
 
-        if(tableContent) tableContent.style.display = 'none';
-        if(tableHeader) tableHeader.style.display = 'none';
-        if(tableFooter) tableFooter.style.display = 'none';
+        if (tableContent) tableContent.style.display = 'none';
+        if (tableHeader) tableHeader.style.display = 'none';
+        if (tableFooter) tableFooter.style.display = 'none';
 
         khung.style.transform = 'scale(1)';
         const form = khung.querySelector('form'); // Giả sử có form trong đó
@@ -1737,16 +1780,16 @@ async function themNguoiDung() {
         });
         addAlertBox(`Thêm người dùng '${userData.username}' thành công.`, '#17c671', '#fff', 3000);
         await addTableKhachHang();
-        
+
         const khungThem = document.getElementById('khungThemNguoiDung');
-        if(khungThem) {
+        if (khungThem) {
             khungThem.style.transform = 'scale(0)';
             const tableContent = document.querySelector('.khachhang .table-content');
             const tableHeader = document.querySelector('.khachhang .table-header');
             const tableFooter = document.querySelector('.khachhang .table-footer');
-            if(tableContent) tableContent.style.display='';
-            if(tableHeader) tableHeader.style.display='';
-            if(tableFooter) tableFooter.style.display='';
+            if (tableContent) tableContent.style.display = '';
+            if (tableHeader) tableHeader.style.display = '';
+            if (tableFooter) tableFooter.style.display = '';
         }
     } catch (error) {
         // Lỗi đã được callAPI xử lý
@@ -1754,7 +1797,7 @@ async function themNguoiDung() {
 }
 
 async function voHieuHoaNguoiDung(checkbox, username) {
-    if(!checkbox || !username) return;
+    if (!checkbox || !username) return;
     const isChecked = checkbox.checked; // true nếu muốn khóa, false nếu muốn mở
     const actionText = isChecked ? "khóa" : "mở khóa";
 
@@ -1797,7 +1840,7 @@ async function xoaNguoiDung(username) {
 function timKiemNguoiDung(inp) {
     if (!inp) return;
     var kieuTimSelect = document.querySelector('select[name="kieuTimKhachHang"]');
-    if(!kieuTimSelect) return;
+    if (!kieuTimSelect) return;
 
     var kieuTim = kieuTimSelect.value;
     var text = inp.value.toLowerCase().trim();
@@ -1806,7 +1849,7 @@ function timKiemNguoiDung(inp) {
     var trs = table.getElementsByTagName('tr');
 
     var columnIndex;
-    switch(kieuTim) {
+    switch (kieuTim) {
         case 'hoten': columnIndex = 1; break;
         case 'email': columnIndex = 2; break;
         case 'taikhoan': columnIndex = 3; break;
@@ -1843,7 +1886,7 @@ function sortKhachHangTable(loai) {
 }
 
 function getValueOfTypeInTable_KhachHang(tr, loai) {
-    if(!tr || !tr.getElementsByTagName) return null;
+    if (!tr || !tr.getElementsByTagName) return null;
     var td = tr.getElementsByTagName('td');
     if (!td || td.length < 5) return null;
     try {
@@ -1854,7 +1897,7 @@ function getValueOfTypeInTable_KhachHang(tr, loai) {
             case 'taikhoan': return td[3].textContent.toLowerCase();
             case 'trangthai': return td[4].textContent.toLowerCase(); // 'Hoạt động' hoặc 'Bị khóa'
         }
-    } catch(e) {
+    } catch (e) {
         console.error("Lỗi khi lấy giá trị từ bảng khách hàng:", e, tr, loai);
         return null;
     }
@@ -1878,20 +1921,20 @@ function partition(arr, pivot, left, right, loai, funcGetValue) {
     var partitionIndex = left;
     for (var i = left; i < right; i++) {
         let val_i = funcGetValue(arr[i], loai);
-        
+
         // Xử lý giá trị null/undefined để chúng luôn ở cuối khi sắp xếp tăng dần
         // hoặc đầu khi sắp xếp giảm dần (tùy logic bạn muốn)
         // Ở đây, giả sử null/undefined coi như nhỏ nhất/lớn nhất tùy theo chiều decrease
         if (val_i === null || val_i === undefined) {
             if (decrease) { // Nếu giảm dần, đưa null lên đầu (coi như lớn nhất)
-                 swap(arr, i, partitionIndex); partitionIndex++;
+                swap(arr, i, partitionIndex); partitionIndex++;
             }
-            continue; 
+            continue;
         }
         if (pivotValue === null || pivotValue === undefined) {
-             if (!decrease) { // Nếu tăng dần, đưa pivot (null) xuống cuối (coi như lớn nhất)
-                 swap(arr, i, partitionIndex); partitionIndex++;
-             }
+            if (!decrease) { // Nếu tăng dần, đưa pivot (null) xuống cuối (coi như lớn nhất)
+                swap(arr, i, partitionIndex); partitionIndex++;
+            }
             continue;
         }
 
@@ -1910,14 +1953,14 @@ function swap(arr, i, j) {
     if (parent) { // Đảm bảo parent tồn tại
         // Swap trong DOM
         const tempNodeForDomSwap = arr[i].cloneNode(true);
-        if(arr[j].parentNode === parent) { // Kiểm tra cả hai node cùng cha
+        if (arr[j].parentNode === parent) { // Kiểm tra cả hai node cùng cha
             parent.replaceChild(tempNodeForDomSwap, arr[j]);
             parent.insertBefore(arr[j], arr[i].nextSibling); // Chèn lại arr[j] vào vị trí cũ của arr[i]
-                                                            // Hoặc đơn giản hơn là remove arr[i] rồi insert lại
+            // Hoặc đơn giản hơn là remove arr[i] rồi insert lại
             parent.replaceChild(arr[i], tempNodeForDomSwap); // Đưa arr[i] (là arr[j] cũ) về đúng chỗ
         } else {
-             // Trường hợp phức tạp hơn nếu không cùng cha, hoặc không cần swap DOM mà chỉ swap mảng
-             // Nếu chỉ swap mảng để tbody.appendChild thì không cần thao tác DOM ở đây
+            // Trường hợp phức tạp hơn nếu không cùng cha, hoặc không cần swap DOM mà chỉ swap mảng
+            // Nếu chỉ swap mảng để tbody.appendChild thì không cần thao tác DOM ở đây
         }
     }
     // Swap trong mảng JavaScript

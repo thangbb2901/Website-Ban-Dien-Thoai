@@ -1,7 +1,6 @@
 import os
 import json
 import uuid
-import datetime
 import sqlite3
 import base64
 import re
@@ -9,9 +8,17 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from flask_socketio import SocketIO, emit
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 # Chứa code điều phối, xử lý luồng nghiệp vụ, định nghĩa API/web, kết nối các thành phần.
 # Ngay dưới dòng `from flask import ...`
 from flask import session, redirect, url_for, flash
+import datetime
+import psycopg2
 import secrets # Thư viện để tạo khóa bí mật
 from model import (
     get_db_connection,
@@ -24,13 +31,18 @@ from model import (
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
-CORS(app)
+socketio = SocketIO(app)
+
+# SỬA ĐỔI: Lấy chuỗi kết nối từ biến môi trường, fallback về SQLite nếu không có
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///database.db')
+
 app.secret_key = secrets.token_hex(16) # Tạo một khóa bí mật ngẫu nhiên
 # Đường dẫn đến thư mục lưu banner
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 BANNER_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'img', 'banners')
 app.config['BANNER_UPLOAD_FOLDER'] = BANNER_UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+OTP_TTL_SECONDS = 600
 
 # Đảm bảo thư mục banner tồn tại
 if not os.path.exists(BANNER_UPLOAD_FOLDER):
@@ -40,6 +52,112 @@ if not os.path.exists(BANNER_UPLOAD_FOLDER):
 def allowed_file(filename):
     """Kiểm tra định dạng file ảnh có được phép."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def is_admin_session():
+    return bool(session.get('is_admin'))
+
+def get_session_username():
+    return session.get('username')
+
+def require_login_api(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not get_session_username():
+            return jsonify({"error": "Bạn cần đăng nhập."}), 401
+        return func(*args, **kwargs)
+    return wrapper
+
+def require_admin_api(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not is_admin_session():
+            return jsonify({"error": "Bạn không có quyền thực hiện thao tác này."}), 403
+        return func(*args, **kwargs)
+    return wrapper
+
+def require_self_or_admin_api(username_arg='username'):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            target_username = kwargs.get(username_arg)
+            current_username = get_session_username()
+            if not current_username:
+                return jsonify({"error": "Bạn cần đăng nhập."}), 401
+            if not is_admin_session() and current_username != target_username:
+                return jsonify({"error": "Bạn không có quyền truy cập tài khoản này."}), 403
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def is_password_hash_value(value):
+    return isinstance(value, str) and (value.startswith('pbkdf2:') or value.startswith('scrypt:'))
+
+def password_matches(stored_password, raw_password):
+    if not stored_password:
+        return False
+    if is_password_hash_value(stored_password):
+        return check_password_hash(stored_password, raw_password)
+    return stored_password == raw_password
+
+def store_otp_in_session(session_key, username, email):
+    otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
+    session[session_key] = {
+        "username": username,
+        "email": email.lower(),
+        "otp": otp_code,
+        "expires_at": (datetime.datetime.utcnow() + datetime.timedelta(seconds=OTP_TTL_SECONDS)).timestamp()
+    }
+    session.modified = True
+    return otp_code
+
+def get_valid_otp_session(session_key, email=None, username=None):
+    otp_data = session.get(session_key)
+    if not otp_data:
+        return None
+    if otp_data.get("expires_at", 0) < datetime.datetime.utcnow().timestamp():
+        session.pop(session_key, None)
+        session.modified = True
+        return None
+    if email and otp_data.get("email") != email.lower():
+        return None
+    if username and otp_data.get("username") != username:
+        return None
+    return otp_data
+
+def clear_otp_session(session_key):
+    session.pop(session_key, None)
+    session.modified = True
+
+def send_otp_email(email_to, otp_code, purpose_text="xác thực"):
+    sender_email = "thptckb1@gmail.com"
+    sender_password = "sool rymp ofgu dlnz"
+    if not sender_password:
+        raise RuntimeError("Thiếu cấu hình SMTP_SENDER_PASSWORD.")
+
+    subject = f"Mã xác thực {purpose_text} - Phone Store"
+    body = f"""
+    Xin chào,
+
+    Bạn vừa yêu cầu {purpose_text} trên hệ thống Phone Store.
+    Mã xác thực OTP của bạn là: {otp_code}
+
+    Mã có hiệu lực trong {OTP_TTL_SECONDS // 60} phút. Tuyệt đối KHÔNG chia sẻ mã này với bất kỳ ai.
+
+    Trân trọng,
+    Ban quản trị Phone Store.
+    """
+
+    msg = MIMEMultipart()
+    msg['From'] = f"Phone Store <{sender_email}>"
+    msg['To'] = email_to
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(sender_email, sender_password)
+    server.send_message(msg)
+    server.quit()
 
 # --- ROUTES CHO CÁC TRANG HTML ---
 @app.route('/')
@@ -96,6 +214,141 @@ def route_tuyendung():
     return render_template('tuyendung.html')
 
 # --- API Endpoints ---
+@app.route('/api/send-otp', methods=['POST'])
+def send_otp_api():
+    return jsonify({"error": "Endpoint này không còn được hỗ trợ."}), 410
+
+@app.route('/api/password-reset/request', methods=['POST'])
+def request_password_reset_otp_api():
+    data = request.json
+    email = (data or {}).get('email', '').strip().lower()
+    if not email or not validate_email(email):
+        return jsonify({"error": "Email không hợp lệ."}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT username, email FROM users WHERE LOWER(email) = ?", (email,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({"error": "Email không tồn tại trong hệ thống."}), 404
+
+        otp_code = store_otp_in_session('password_reset_otp', user_row['username'], user_row['email'])
+        send_otp_email(user_row['email'], otp_code, "đặt lại mật khẩu")
+        return jsonify({"message": "Mã OTP đã được gửi."}), 200
+    except smtplib.SMTPAuthenticationError:
+        return jsonify({"error": "Lỗi cấu hình SMTP. Hãy kiểm tra biến môi trường gửi mail."}), 500
+    except Exception as e:
+        logging.error(f"Lỗi gửi OTP đặt lại mật khẩu: {e}", exc_info=True)
+        return jsonify({"error": "Không thể gửi OTP lúc này."}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/password-reset/verify', methods=['POST'])
+def verify_password_reset_otp_api():
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    otp = data.get('otp', '').strip()
+    otp_data = get_valid_otp_session('password_reset_otp', email=email)
+    if not otp_data or otp_data.get('otp') != otp:
+        return jsonify({"error": "Mã OTP không hợp lệ hoặc đã hết hạn."}), 400
+
+    session['password_reset_verified'] = {
+        "username": otp_data['username'],
+        "email": otp_data['email'],
+        "expires_at": (datetime.datetime.utcnow() + datetime.timedelta(seconds=OTP_TTL_SECONDS)).timestamp()
+    }
+    session.modified = True
+    return jsonify({"message": "Xác thực OTP thành công."}), 200
+
+@app.route('/api/password-reset/complete', methods=['POST'])
+def complete_password_reset_api():
+    data = request.json or {}
+    new_password = data.get('pass', '')
+    if len(new_password) < 6:
+        return jsonify({"error": "Mật khẩu mới phải có ít nhất 6 ký tự."}), 400
+
+    verified = session.get('password_reset_verified')
+    if not verified or verified.get('expires_at', 0) < datetime.datetime.utcnow().timestamp():
+        session.pop('password_reset_verified', None)
+        return jsonify({"error": "Phiên đặt lại mật khẩu đã hết hạn."}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        hashed_password = generate_password_hash(new_password)
+        cursor.execute("UPDATE users SET pass = ? WHERE username = ?", (hashed_password, verified['username']))
+        conn.commit()
+        clear_otp_session('password_reset_otp')
+        session.pop('password_reset_verified', None)
+        session.modified = True
+        return jsonify({"message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại."}), 200
+    except sqlite3.Error as e:
+        conn.rollback()
+        logging.error(f"Lỗi đặt lại mật khẩu: {e}", exc_info=True)
+        return jsonify({"error": "Không thể đặt lại mật khẩu."}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/users/<string:username>/password-otp', methods=['POST'])
+@require_self_or_admin_api()
+def send_change_password_otp_api(username):
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    if not email or not validate_email(email):
+        return jsonify({"error": "Email không hợp lệ."}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT email FROM users WHERE username = ?", (username,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({"error": "Người dùng không tìm thấy."}), 404
+        if not user_row['email'] or user_row['email'].strip().lower() != email:
+            return jsonify({"error": "Gmail xác thực không khớp với tài khoản."}), 400
+
+        otp_code = store_otp_in_session('password_change_otp', username, email)
+        send_otp_email(user_row['email'], otp_code, "đổi mật khẩu")
+        return jsonify({"message": "Mã OTP đã được gửi."}), 200
+    except smtplib.SMTPAuthenticationError:
+        return jsonify({"error": "Lỗi cấu hình SMTP. Hãy kiểm tra biến môi trường gửi mail."}), 500
+    except Exception as e:
+        logging.error(f"Lỗi gửi OTP đổi mật khẩu: {e}", exc_info=True)
+        return jsonify({"error": "Không thể gửi OTP lúc này."}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/users/<string:username>/password', methods=['PUT'])
+@require_self_or_admin_api()
+def change_password_api(username):
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    otp = data.get('otp', '').strip()
+    new_password = data.get('pass', '')
+
+    if len(new_password) < 6:
+        return jsonify({"error": "Mật khẩu mới phải có ít nhất 6 ký tự."}), 400
+
+    otp_data = get_valid_otp_session('password_change_otp', email=email, username=username)
+    if not otp_data or otp_data.get('otp') != otp:
+        return jsonify({"error": "Mã OTP không hợp lệ hoặc đã hết hạn."}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        hashed_password = generate_password_hash(new_password)
+        cursor.execute("UPDATE users SET pass = ? WHERE username = ?", (hashed_password, username))
+        conn.commit()
+        clear_otp_session('password_change_otp')
+        return jsonify({"message": "Đổi mật khẩu thành công."}), 200
+    except Exception as e: # Bắt lỗi chung hơn cho cả psycopg2
+        conn.rollback()
+        logging.error(f"Lỗi đổi mật khẩu cho {username}: {e}", exc_info=True)
+        return jsonify({"error": "Không thể đổi mật khẩu."}), 500
+    finally:
+        conn.close()
+
 @app.route('/api/top-products', methods=['GET'])
 def get_top_products_api():
     """Lấy danh sách 5 sản phẩm bán chạy nhất."""
@@ -113,7 +366,7 @@ def get_products_api():
         cursor.execute("SELECT * FROM products")
         products_rows = cursor.fetchall()
         return jsonify([product_row_to_dict(row) for row in products_rows])
-    except sqlite3.Error as e:
+    except Exception as e:
         logging.error(f"API Lỗi CSDL khi lấy danh sách sản phẩm: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
@@ -131,7 +384,7 @@ def get_product_by_masp_api(masp):
         if product_row:
             return jsonify(product_row_to_dict(product_row))
         return jsonify({"error": "Sản phẩm không tìm thấy"}), 404
-    except sqlite3.Error as e:
+    except Exception as e:
         logging.error(f"API Lỗi CSDL khi lấy sản phẩm {masp}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
@@ -140,6 +393,7 @@ def get_product_by_masp_api(masp):
 
 # Thay thế hàm add_product_api cũ bằng hàm này
 @app.route('/api/products', methods=['POST'])
+@require_admin_api
 def add_product_api():
     """Thêm sản phẩm mới, có xử lý file ảnh."""
     if 'name' not in request.form:
@@ -180,11 +434,12 @@ def add_product_api():
             detail_data.get('screen', ""), detail_data.get('os', ""), detail_data.get('camara', ""),
             detail_data.get('camaraFront', ""), detail_data.get('cpu', ""), detail_data.get('ram', ""),
             detail_data.get('rom', ""), detail_data.get('microUSB', ""), detail_data.get('memoryStick', ""),
-            detail_data.get('sim', ""), detail_data.get('battery', "")
+            detail_data.get('sim', ""), detail_data.get('battery', ""),
+            request.form.get('quantity', 50)
         )
         cursor.execute('''
-            INSERT INTO products (masp, name, company, img, price, star, rateCount, promo_name, promo_value, detail_screen, detail_os, detail_camara, detail_camaraFront, detail_cpu, detail_ram, detail_rom, detail_microUSB, detail_memoryStick, detail_sim, detail_battery)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO products (masp, name, company, img, price, star, rateCount, promo_name, promo_value, detail_screen, detail_os, detail_camara, detail_camaraFront, detail_cpu, detail_ram, detail_rom, detail_microUSB, detail_memoryStick, detail_sim, detail_battery, quantity)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', insert_data)
         conn.commit()
 
@@ -193,11 +448,10 @@ def add_product_api():
         logging.info(f"API: Đã thêm sản phẩm '{request.form.get('name')}' (masp: {masp})")
         return jsonify(product_row_to_dict(new_product_row)), 201
 
-    except sqlite3.IntegrityError:
+    except Exception as e:
         conn.rollback()
-        return jsonify({"error": f"Sản phẩm với mã '{masp}' đã tồn tại."}), 409
-    except sqlite3.Error as e:
-        conn.rollback()
+        if 'UNIQUE constraint' in str(e) or 'duplicate key value' in str(e):
+             return jsonify({"error": f"Sản phẩm với mã '{masp}' đã tồn tại."}), 409
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
         if conn:
@@ -205,6 +459,7 @@ def add_product_api():
 
 # Thay thế hàm update_product_api cũ bằng hàm này
 @app.route('/api/products/<string:masp>', methods=['PUT'])
+@require_admin_api
 def update_product_api(masp):
     """Cập nhật sản phẩm, có xử lý file ảnh."""
     conn = get_db_connection()
@@ -257,6 +512,7 @@ def update_product_api(masp):
             detail_data.get('memoryStick', current_product['detail_memoryStick']),
             detail_data.get('sim', current_product['detail_sim']),
             detail_data.get('battery', current_product['detail_battery']),
+            request.form.get('quantity', current_product['quantity']),
             masp
         )
         
@@ -266,10 +522,14 @@ def update_product_api(masp):
                 promo_name = ?, promo_value = ?,
                 detail_screen = ?, detail_os = ?, detail_camara = ?, detail_camaraFront = ?,
                 detail_cpu = ?, detail_ram = ?, detail_rom = ?, detail_microUSB = ?,
-                detail_memoryStick = ?, detail_sim = ?, detail_battery = ?
+                detail_memoryStick = ?, detail_sim = ?, detail_battery = ?,
+                quantity = ?
             WHERE masp = ?
         ''', update_data)
         conn.commit()
+
+        # Phát tín hiệu cập nhật kho nếu số lượng thay đổi
+        socketio.emit('update_stock', {'masp': masp, 'new_quantity': int(request.form.get('quantity', current_product['quantity']))})
 
         cursor.execute("SELECT * FROM products WHERE masp = ?", (masp,))
         updated_product_row = cursor.fetchone()
@@ -286,6 +546,7 @@ def update_product_api(masp):
             conn.close()
 
 @app.route('/api/products/<string:masp>', methods=['DELETE'])
+@require_admin_api
 def delete_product_api(masp):
     """Xóa sản phẩm theo mã sản phẩm."""
     conn = get_db_connection()
@@ -299,7 +560,7 @@ def delete_product_api(masp):
         conn.commit()
         logging.info(f"API: Đã xóa sản phẩm (masp: {masp})")
         return jsonify({"message": "Xóa sản phẩm thành công"}), 200
-    except sqlite3.Error as e:
+    except Exception as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi xóa sản phẩm {masp}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -308,6 +569,7 @@ def delete_product_api(masp):
             conn.close()
 
 @app.route('/api/users', methods=['GET'])
+@require_admin_api
 def get_users_api():
     """Lấy danh sách tất cả người dùng."""
     conn = get_db_connection()
@@ -316,7 +578,7 @@ def get_users_api():
         cursor.execute("SELECT username, ho, ten, email, products, off, perm FROM users")
         users_rows = cursor.fetchall()
         return jsonify([user_row_to_dict(row) for row in users_rows])
-    except sqlite3.Error as e:
+    except Exception as e:
         logging.error(f"API Lỗi CSDL khi lấy danh sách người dùng: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
@@ -365,25 +627,25 @@ def add_user_api():
             INSERT INTO users (username, pass, ho, ten, email, products, off, perm)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            username, password,
+            username, generate_password_hash(password),
             data.get('ho', ''), data.get('ten', ''), email or None,
-            json.dumps([]), 0, data.get('perm', 0)
+            json.dumps([]), 0, 0
         ))
         conn.commit()
 
-        cursor.execute("SELECT username, ho, ten, email, products, off, perm FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT username, ho, ten, email, address, products, off, perm FROM users WHERE username = ?", (username,))
         new_user_row = cursor.fetchone()
         logging.info(f"API: Đã thêm người dùng '{username}'")
         return jsonify(user_row_to_dict(new_user_row)), 201
-    except sqlite3.IntegrityError as ie:
+    except Exception as ie:
         conn.rollback()
         logging.error(f"API Lỗi Integrity khi thêm người dùng {username}: {ie}")
-        if "UNIQUE constraint failed: users.username" in str(ie):
+        if ("UNIQUE constraint failed: users.username" in str(ie)) or ('duplicate key value violates unique constraint "users_username_key"' in str(ie)):
             return jsonify({"error": f"Tên đăng nhập '{username}' đã tồn tại."}), 409
-        if "UNIQUE constraint failed: users.email" in str(ie) and email:
+        if ("UNIQUE constraint failed: users.email" in str(ie) or 'duplicate key value violates unique constraint "users_email_key"' in str(ie)) and email:
             return jsonify({"error": f"Email '{email}' đã được sử dụng."}), 409
         return jsonify({"error": "Lỗi CSDL: Dữ liệu không hợp lệ."}), 400
-    except sqlite3.Error as e:
+    except Exception as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi thêm người dùng {username}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -392,6 +654,7 @@ def add_user_api():
             conn.close()
 # thay doi thong tin nguoi dung tren web
 @app.route('/api/users/<string:username>', methods=['PUT'])
+@require_self_or_admin_api()
 def update_user_details_api(username):
     """Cập nhật thông tin chi tiết của người dùng."""
     data = request.json
@@ -411,21 +674,17 @@ def update_user_details_api(username):
             fields_to_update['ho'] = data['ho'].strip()
         if 'ten' in data:
             fields_to_update['ten'] = data['ten'].strip()
-
         if 'email' in data:
-            email_to_update = data['email'].strip() if data['email'] else None
+            email_to_update = data['email'].strip()
             if email_to_update and not validate_email(email_to_update):
                 return jsonify({"error": "Email không hợp lệ."}), 400
-            if email_to_update and email_to_update.lower() != (user_exists['email'] or '').lower():
-                cursor.execute("SELECT username FROM users WHERE email = ? AND username != ?", (email_to_update, username))
-                if cursor.fetchone():
-                    return jsonify({"error": f"Email '{email_to_update}' đã được sử dụng."}), 409
-            fields_to_update['email'] = email_to_update
+            fields_to_update['email'] = email_to_update or None
 
-        if 'pass' in data and data['pass']:
-            if len(data['pass']) < 6:
-                return jsonify({"error": "Mật khẩu mới phải có ít nhất 6 ký tự."}), 400
-            fields_to_update['pass'] = data['pass']
+        if 'address' in data:
+            fields_to_update['address'] = data['address'].strip()
+
+        if 'pass' in data:
+            return jsonify({"error": "Hãy dùng API đổi mật khẩu chuyên biệt."}), 400
 
         if not fields_to_update:
             return jsonify(user_row_to_dict(user_exists)), 200
@@ -436,18 +695,18 @@ def update_user_details_api(username):
         cursor.execute(f"UPDATE users SET {set_clause} WHERE username = ?", tuple(values))
         conn.commit()
 
-        cursor.execute("SELECT username, ho, ten, email, products, off, perm FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT username, ho, ten, email, address, products, off, perm FROM users WHERE username = ?", (username,))
         updated_user_row = cursor.fetchone()
         logging.info(f"API: Đã cập nhật thông tin người dùng '{username}'")
         return jsonify(user_row_to_dict(updated_user_row))
 
-    except sqlite3.IntegrityError as ie:
+    except Exception as ie:
         conn.rollback()
         logging.error(f"API Lỗi Integrity khi cập nhật người dùng {username}: {ie}")
-        if "UNIQUE constraint failed: users.email" in str(ie) and data.get('email'):
+        if ("UNIQUE constraint failed: users.email" in str(ie) or 'duplicate key value violates unique constraint "users_email_key"' in str(ie)) and data.get('email'):
             return jsonify({"error": f"Email '{data.get('email')}' đã được sử dụng."}), 409
         return jsonify({"error": "Lỗi CSDL: Dữ liệu không hợp lệ."}), 400
-    except sqlite3.Error as e:
+    except Exception as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi cập nhật người dùng {username}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -455,24 +714,26 @@ def update_user_details_api(username):
         if conn:
             conn.close()
 @app.route('/api/users/<string:username>', methods=['GET'])
+@require_self_or_admin_api()
 def get_user_by_username_api(username):
     """Lấy thông tin chi tiết của người dùng theo tên đăng nhập."""
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         # Lấy các trường cần thiết, bỏ qua mật khẩu (pass) để bảo mật
-        cursor.execute("SELECT username, ho, ten, email, products, off, perm FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT username, ho, ten, email, address, products, off, perm FROM users WHERE username = ?", (username,))
         user_row = cursor.fetchone()
         if user_row:
             return jsonify(user_row_to_dict(user_row))
         return jsonify({"error": "Người dùng không tìm thấy"}), 404
-    except sqlite3.Error as e:
+    except Exception as e:
         logging.error(f"API Lỗi CSDL khi lấy người dùng {username}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
         if conn:
             conn.close()
 @app.route('/api/users/<string:username>/status', methods=['PUT'])
+@require_admin_api
 def update_user_status_api(username):
     """Cập nhật trạng thái người dùng (off)."""
     data = request.json
@@ -493,7 +754,7 @@ def update_user_status_api(username):
         updated_user_row = cursor.fetchone()
         logging.info(f"API: Đã cập nhật trạng thái người dùng '{username}' (off: {data['off']})")
         return jsonify(user_row_to_dict(updated_user_row))
-    except sqlite3.Error as e:
+    except Exception as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi cập nhật trạng thái người dùng {username}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -502,6 +763,7 @@ def update_user_status_api(username):
             conn.close()
 
 @app.route('/api/users/<string:username>', methods=['DELETE'])
+@require_admin_api
 def delete_user_api(username):
     """Xóa người dùng theo tên đăng nhập."""
     conn = get_db_connection()
@@ -511,11 +773,15 @@ def delete_user_api(username):
         if not cursor.fetchone():
             return jsonify({"error": "Người dùng không tìm thấy"}), 404
 
+        # Xóa các đơn hàng liên quan trước để đảm bảo sạch sẽ dữ liệu
+        cursor.execute("DELETE FROM orders WHERE username = ?", (username,))
+        
+        # Xóa người dùng
         cursor.execute("DELETE FROM users WHERE username = ?", (username,))
         conn.commit()
-        logging.info(f"API: Đã xóa người dùng '{username}'")
-        return jsonify({"message": "Xóa người dùng thành công"}), 200
-    except sqlite3.Error as e:
+        logging.info(f"API: Đã xóa người dùng '{username}' và toàn bộ lịch sử đơn hàng.")
+        return jsonify({"message": "Xóa người dùng và lịch sử thành công"}), 200
+    except Exception as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi xóa người dùng {username}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -533,14 +799,6 @@ def login_api():
     username = data['username'].strip()
     password = data['pass']
 
-    # === THAY ĐỔI 1: KIỂM TRA ADMIN ĐẦU TIÊN ===
-    if username == 'admin' and password == 'adadad':
-        session['is_admin'] = True 
-        session['username'] = 'admin'
-        logging.info(f"API: Admin '{username}' đăng nhập thành công.")
-        return jsonify({"message": "Admin login successful", "is_admin": True}), 200
-
-    # --- Xử lý đăng nhập cho người dùng thường ---
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -548,15 +806,23 @@ def login_api():
         user_row = cursor.fetchone()
         if not user_row:
             return jsonify({"error": "Tên đăng nhập không tồn tại."}), 404
-        if user_row['pass'] != password:
+        if not password_matches(user_row['pass'], password):
             return jsonify({"error": "Mật khẩu không đúng."}), 401
+        if not is_password_hash_value(user_row['pass']):
+            hashed_password = generate_password_hash(password)
+            cursor.execute("UPDATE users SET pass = ? WHERE username = ?", (hashed_password, username))
+            conn.commit()
+            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+            user_row = cursor.fetchone()
         if user_row['off']: # Nếu cột 'off' là 1 (True)
             return jsonify({"error": "Tài khoản này đã bị khóa."}), 403 # 403 Forbidden
-        session['is_admin'] = False
+        session['is_admin'] = bool(user_row['perm'])
         session['username'] = user_row['username']
 
         logging.info(f"API: Người dùng '{username}' đăng nhập thành công.")
-        return jsonify(user_row_to_dict(user_row)), 200
+        response_payload = user_row_to_dict(user_row)
+        response_payload['is_admin'] = bool(user_row['perm'])
+        return jsonify(response_payload), 200
     except Exception as e:
         logging.error(f"Lỗi đăng nhập: {e}")
         return jsonify({"error": "Lỗi máy chủ khi đăng nhập."}), 500
@@ -565,19 +831,32 @@ def login_api():
             conn.close()
 
 @app.route('/api/orders', methods=['GET'])
+@require_login_api
 def get_orders_api():
-    """Lấy danh sách tất cả đơn hàng."""
+    """Lấy danh sách các đơn hàng, hỗ trợ lọc theo username."""
+    username = request.args.get('username')
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM orders ORDER BY DATETIME(order_date) DESC")
+        current_username = get_session_username()
+        if username:
+            if not is_admin_session() and username != current_username:
+                return jsonify({"error": "Bạn không có quyền xem đơn hàng của người dùng khác."}), 403
+            # Lọc đơn hàng của một người dùng cụ thể
+            cursor.execute("SELECT * FROM orders WHERE username = ? ORDER BY DATETIME(order_date) DESC", (username,))
+        else:
+            if not is_admin_session():
+                return jsonify({"error": "Bạn không có quyền xem toàn bộ đơn hàng."}), 403
+            # Lấy toàn bộ đơn hàng (thường dành cho Admin)
+            cursor.execute("SELECT * FROM orders ORDER BY DATETIME(order_date) DESC")
+        
         orders_rows = cursor.fetchall()
         orders_list = []
         for order_row in orders_rows:
             cursor.execute("SELECT * FROM order_items WHERE order_id = ?", (order_row['order_id'],))
             items_rows = cursor.fetchall()
             orders_list.append(order_row_to_dict(order_row, items_rows))
-        return jsonify(orders_list)
+        return jsonify(orders_list), 200
     except sqlite3.Error as e:
         logging.error(f"API Lỗi CSDL khi lấy danh sách đơn hàng: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -586,6 +865,7 @@ def get_orders_api():
             conn.close()
 
 @app.route('/api/orders', methods=['POST'])
+@require_login_api
 def create_order_api():
     """Tạo đơn hàng mới."""
     data = request.json
@@ -601,6 +881,8 @@ def create_order_api():
         return jsonify({"error": "Đơn hàng phải có ít nhất một sản phẩm."}), 400
 
     username = data['username']
+    if not is_admin_session() and username != get_session_username():
+        return jsonify({"error": "Bạn không có quyền tạo đơn cho tài khoản khác."}), 403
     products_in_order = data['products']
     shipping_info = data.get('shipping_info', {})
     required_shipping_fields = ['name', 'phone', 'address']
@@ -628,11 +910,13 @@ def create_order_api():
                 conn.close()
                 return jsonify({"error": f"Dữ liệu sản phẩm trong đơn hàng không hợp lệ: {item_data}"}), 400
 
-            cursor.execute("SELECT name, price, promo_name, promo_value FROM products WHERE masp = ?", (masp,))
+            cursor.execute("SELECT name, price, promo_name, promo_value, quantity FROM products WHERE masp = ?", (masp,))
             product_db = cursor.fetchone()
             if not product_db:
                 conn.close()
                 return jsonify({"error": f"Sản phẩm với mã '{masp}' không tồn tại."}), 404
+            if int(product_db['quantity'] or 0) < quantity:
+                return jsonify({"error": f"Sản phẩm '{product_db['name']}' không đủ tồn kho."}), 400
 
             price_at_purchase_str = item_data.get('price_at_purchase', product_db['price'])
             price_num = string_to_num(item_data.get('price_at_purchase')) if item_data.get('price_at_purchase') else string_to_num(product_db['price'])
@@ -658,6 +942,13 @@ def create_order_api():
                 INSERT INTO order_items (order_id, product_masp, quantity, price_at_purchase, product_name)
                 VALUES (?, ?, ?, ?, ?)
             ''', (order_id, item_db['masp'], item_db['quantity'], item_db['price_at_purchase'], item_db['product_name']))
+            
+            # CẬP NHẬT KHO VÀ PHÁT TÍN HIỆU REAL-TIME
+            cursor.execute("UPDATE products SET quantity = quantity - ? WHERE masp = ?", (item_db['quantity'], item_db['masp']))
+            cursor.execute("SELECT quantity FROM products WHERE masp = ?", (item_db['masp'],))
+            updated_stock = cursor.fetchone()
+            if updated_stock:
+                socketio.emit('update_stock', {'masp': item_db['masp'], 'new_quantity': updated_stock['quantity']})
 
         conn.commit()
 
@@ -682,6 +973,7 @@ def create_order_api():
             conn.close()
 
 @app.route('/api/orders/<string:order_id>/status', methods=['PUT'])
+@require_admin_api
 def update_order_status_api(order_id):
     """Cập nhật trạng thái đơn hàng."""
     data = request.json
@@ -718,6 +1010,7 @@ def update_order_status_api(order_id):
             conn.close()
 
 @app.route('/api/orders/<string:order_id>', methods=['PUT'])
+@require_admin_api
 def update_full_order_api(order_id):
     """Cập nhật toàn bộ thông tin đơn hàng."""
     data = request.json
@@ -817,6 +1110,11 @@ def reset_password_api(username):
     if len(new_password) < 6:
         return jsonify({"error": "Mật khẩu mới phải có ít nhất 6 ký tự."}), 400
 
+    verified = session.get('password_reset_verified')
+    if not verified or verified.get('username') != username or verified.get('expires_at', 0) < datetime.datetime.utcnow().timestamp():
+        session.pop('password_reset_verified', None)
+        return jsonify({"error": "Phiên đặt lại mật khẩu không hợp lệ hoặc đã hết hạn."}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -825,8 +1123,11 @@ def reset_password_api(username):
         if not user_exists:
             return jsonify({"error": "Người dùng không tìm thấy"}), 404
 
-        cursor.execute("UPDATE users SET pass = ? WHERE username = ?", (new_password, username))
+        cursor.execute("UPDATE users SET pass = ? WHERE username = ?", (generate_password_hash(new_password), username))
         conn.commit()
+        clear_otp_session('password_reset_otp')
+        session.pop('password_reset_verified', None)
+        session.modified = True
 
         cursor.execute("SELECT username, ho, ten, email, products, off, perm FROM users WHERE username = ?", (username,))
         updated_user_row = cursor.fetchone()
@@ -846,7 +1147,14 @@ def get_banners_api():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM banners ORDER BY display_order ASC, uploaded_at DESC")
+        banner_type = request.args.get('type')
+        if banner_type:
+            cursor.execute(
+                "SELECT * FROM banners WHERE banner_type = ? ORDER BY display_order ASC, uploaded_at DESC",
+                (banner_type,)
+            )
+        else:
+            cursor.execute("SELECT * FROM banners ORDER BY display_order ASC, uploaded_at DESC")
         banners_rows = cursor.fetchall()
         return jsonify([banner_row_to_dict(row) for row in banners_rows])
     except sqlite3.Error as e:
@@ -857,6 +1165,7 @@ def get_banners_api():
             conn.close()
 
 @app.route('/api/banners', methods=['POST'])
+@require_admin_api
 def add_banner_api():
     """Thêm banner mới."""
     if 'banner_image' not in request.files:
@@ -867,6 +1176,9 @@ def add_banner_api():
     link_url = request.form.get('link_url', '')
     display_order = request.form.get('display_order', 0, type=int)
     is_active = request.form.get('is_active', 'true').lower() == 'true'
+    banner_type = request.form.get('banner_type', 'hero')
+    if banner_type not in ['hero', 'inline']:
+        banner_type = 'hero'
 
     if file.filename == '':
         return jsonify({"error": "Không có file nào được chọn"}), 400
@@ -884,9 +1196,9 @@ def add_banner_api():
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO banners (filename, alt_text, link_url, display_order, is_active)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (filename, alt_text, link_url, display_order, int(is_active)))
+                INSERT INTO banners (filename, alt_text, link_url, display_order, is_active, banner_type)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (filename, alt_text, link_url, display_order, int(is_active), banner_type))
             conn.commit()
             banner_id = cursor.lastrowid
 
@@ -916,6 +1228,7 @@ def add_banner_api():
         return jsonify({"error": "Loại file không được phép"}), 400
 
 @app.route('/api/banners/<int:banner_id>', methods=['PUT'])
+@require_admin_api
 def update_banner_api(banner_id):
     """Cập nhật thông tin banner."""
     conn = get_db_connection()
@@ -930,6 +1243,9 @@ def update_banner_api(banner_id):
         link_url = request.form.get('link_url', current_banner['link_url'])
         display_order = request.form.get('display_order', current_banner['display_order'], type=int)
         is_active_str = request.form.get('is_active')
+        banner_type = request.form.get('banner_type', current_banner['banner_type'] if 'banner_type' in current_banner.keys() else 'hero')
+        if banner_type not in ['hero', 'inline']:
+            banner_type = current_banner['banner_type'] if 'banner_type' in current_banner.keys() else 'hero'
 
         is_active = bool(current_banner['is_active'])
         if is_active_str is not None:
@@ -956,9 +1272,9 @@ def update_banner_api(banner_id):
                 return jsonify({"error": "Loại file không được phép cho banner mới"}), 400
 
         cursor.execute('''
-            UPDATE banners SET filename = ?, alt_text = ?, link_url = ?, display_order = ?, is_active = ?
+            UPDATE banners SET filename = ?, alt_text = ?, link_url = ?, display_order = ?, is_active = ?, banner_type = ?
             WHERE banner_id = ?
-        ''', (new_filename, alt_text, link_url, display_order, int(is_active), banner_id))
+        ''', (new_filename, alt_text, link_url, display_order, int(is_active), banner_type, banner_id))
         conn.commit()
 
         cursor.execute("SELECT * FROM banners WHERE banner_id = ?", (banner_id,))
@@ -981,6 +1297,7 @@ def update_banner_api(banner_id):
             conn.close()
 
 @app.route('/api/banners/<int:banner_id>', methods=['DELETE'])
+@require_admin_api
 def delete_banner_api(banner_id):
     """Xóa banner theo ID."""
     conn = get_db_connection()
@@ -1017,40 +1334,71 @@ def delete_banner_api(banner_id):
 
 @app.route('/api/ai-chat', methods=['POST'])
 def ai_chat_api():
-    """Xử lý yêu cầu chat AI."""
+    """Xử lý yêu cầu chat AI MI AI với logic tìm kiếm sản phẩm thực tế."""
     data = request.json
-    user_message = data.get('message')
+    user_message = data.get('message', '').strip()
 
     if not user_message:
         return jsonify({"error": "Không có tin nhắn nào được cung cấp"}), 400
 
-    logging.info(f"AI Chat (Mô phỏng) - Tin nhắn từ người dùng: {user_message}")
-    reply_text = "Xin lỗi, tôi chưa được huấn luyện để trả lời câu hỏi này. Bạn có thể hỏi về sản phẩm hoặc chính sách của cửa hàng không?"
     user_message_lower = user_message.lower()
+    reply_text = ""
 
-    if any(keyword in user_message_lower for keyword in ["chào bạn", "hello", "xin chào", "chao", "hi"]):
-        reply_text = "Xin chào! Tôi là Trợ lý AI của Thế Giới Điện Thoại. Tôi có thể giúp gì cho bạn hôm nay?"
-    elif any(keyword in user_message_lower for keyword in ["hỗ trợ", "cần giúp", "liên hệ hỗ trợ", "support", "help"]):
-        reply_text = "Bạn có thể liên hệ bộ phận hỗ trợ của chúng tôi qua số điện thoại: 0326732555 (ví dụ) để được giúp đỡ trực tiếp. Bạn có câu hỏi cụ thể nào khác không?"
-    elif any(keyword in user_message_lower for keyword in ["quên mật khẩu", "mật khẩu", "tai khoản", "quên mk", "lấy lại pass"]):
-        reply_text = "Nếu bạn quên mật khẩu, bạn có thể sử dụng chức năng 'Quên mật khẩu' ở trang đăng nhập để đặt lại. Bạn có cần hướng dẫn thêm không?"
-    elif any(keyword in user_message_lower for keyword in ["tư vấn", "mua điện thoại", "chọn điện thoại", "nên mua", "gợi ý điện thoại"]):
-        reply_text = "Chắc chắn rồi! Bạn có thể cho tôi biết bạn quan tâm đến hãng nào (ví dụ: Samsung, iPhone, Oppo), mức giá mong muốn, hoặc các tính năng cụ thể bạn cần không (như camera tốt, pin bền, chơi game mượt)?"
-    elif "samsung" in user_message_lower:
-        reply_text = "Samsung có rất nhiều mẫu mã điện thoại chất lượng! Bạn muốn biết thông tin về dòng Galaxy S cao cấp, Galaxy A tầm trung, hay các dòng khác?"
-    elif "iphone" in user_message_lower or "apple" in user_message_lower:
-        reply_text = "iPhone của Apple nổi tiếng với sự mượt mà và hệ sinh thái tốt. Bạn muốn tìm hiểu về model iPhone nào, hay có tính năng cụ thể nào bạn quan tâm?"
-    elif "oppo" in user_message_lower:
-        reply_text = "Oppo được biết đến với các mẫu điện thoại có camera selfie đẹp và thiết kế thời trang. Bạn có đang nhắm đến dòng Reno, dòng A hay Find X của Oppo không?"
-    elif any(keyword in user_message_lower for keyword in ["cảm ơn", "thank you", "cám ơn", "okie", "ok cảm ơn"]):
-        reply_text = "Rất vui được hỗ trợ bạn! Nếu bạn cần thêm thông tin gì, đừng ngần ngại hỏi nhé."
+    # 1. Chào hỏi
+    if any(kw in user_message_lower for kw in ["chào", "hi", "hello", "xin chào"]):
+        reply_text = "Xin chào! Tôi là **MI AI** - Trợ lý thông minh của bạn. Bạn đang muốn tìm mua điện thoại hay cần hỗ trợ gì không?"
+    
+    # 2. Tư vấn theo hãng
+    elif any(kw in user_message_lower for kw in ["samsung", "iphone", "apple", "oppo", "nokia", "huawei", "xiaomi", "realme", "vivo"]):
+        brands = ["samsung", "iphone", "oppo", "nokia", "huawei", "xiaomi", "realme", "vivo", "apple"]
+        found_brand = next((b for b in brands if b in user_message_lower), None)
+        
+        if found_brand:
+            if found_brand == "apple": found_brand = "iphone"
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, price, masp FROM products WHERE name LIKE ? OR company LIKE ? LIMIT 3", 
+                           (f'%{found_brand}%', f'%{found_brand}%'))
+            products = cursor.fetchall()
+            conn.close()
+
+            if products:
+                reply_text = f"Dòng **{found_brand.upper()}** bên mình đang có các mẫu rất hot đây ạ:\n"
+                for p in products:
+                    reply_text += f"- **{p['name']}**: Giá khoảng {p['price']}₫ (Mã: {p['masp']})\n"
+                reply_text += "\nBạn có muốn mình tư vấn kỹ hơn về mẫu nào không?"
+            else:
+                reply_text = f"Hiện tại các mẫu {found_brand.upper()} đang cháy hàng rồi ạ. Bạn tham khảo sang dòng khác nhé!"
+        else:
+            reply_text = "Bạn đang quan tâm đến hãng điện thoại nào ạ?"
+
+    # 3. Tìm giá rẻ
+    elif any(kw in user_message_lower for kw in ["rẻ", "giá tốt", "tiết kiệm"]):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, price, masp FROM products ORDER BY CAST(REPLACE(price, '.', '') AS REAL) ASC LIMIT 3")
+        products = cursor.fetchall()
+        conn.close()
+        
+        if products:
+            reply_text = "Đây là danh sách các máy có **giá tốt nhất** hiện nay:\n"
+            for p in products:
+                reply_text += f"- **{p['name']}**: Chỉ {p['price']}₫\n"
+        else:
+            reply_text = "Hiện tại mình chưa tìm thấy máy nào giá cực kỳ rẻ ạ."
+
+    # 4. Đơn hàng
+    elif any(kw in user_message_lower for kw in ["đơn hàng", "mua hàng"]):
+        reply_text = "Về đơn hàng, bạn vui lòng vào mục **'Đơn hàng của tôi'** hoặc chát với hỗ trợ tại số **032 637 3225** nhé!"
+
+    # 5. Cảm ơn
+    elif any(kw in user_message_lower for kw in ["cảm ơn", "thanks", "ok"]):
+        reply_text = "Rất vui được giúp bạn! **MI AI** luôn sẵn sàng hỗ trợ. 😊"
+
+    # 6. Mặc định
     else:
         sample_products = get_random_products(limit=2)
-        if sample_products:
-            suggestions = "Hiện tại tôi chưa hiểu rõ câu hỏi của bạn. Tuy nhiên, bạn có thể tham khảo một số sản phẩm sau:\n"
-            for product in sample_products:
-                suggestions += f"- {product['name']} (Mã: {product['masp']})\n"
-            reply_text = f"{suggestions}Bạn có thể hỏi cụ thể hơn về một sản phẩm hoặc tính năng bạn quan tâm không?"
+        reply_text = "Hiện tại mình chưa hiểu lắm. 😅 Bạn thử gõ 'Tìm iPhone' hoặc 'Máy giá rẻ' xem sao nhé!"
 
     return jsonify({"reply": reply_text})
 
@@ -1069,17 +1417,100 @@ def internal_server_error(e):
     return jsonify(error="Lỗi máy chủ nội bộ. Vui lòng thử lại sau."), 500
 
 # --- Khởi tạo ứng dụng và CSDL ---
+def migrate_database():
+    """Tự động cập nhật cấu trúc CSDL nếu thiếu cột."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Kiểm tra xem cột quantity đã tồn tại chưa
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'quantity' not in columns:
+            logging.info("CSDL cũ: Đang thêm cột 'quantity' vào bảng products...")
+            cursor.execute("ALTER TABLE products ADD COLUMN quantity INTEGER DEFAULT 50")
+            conn.commit()
+
+        # Kiểm tra xem cột address trong bảng users đã tồn tại chưa
+        cursor.execute("PRAGMA table_info(users)")
+        columns_users = [row[1] for row in cursor.fetchall()]
+        if 'address' not in columns_users:
+            logging.info("CSDL cũ: Đang thêm cột 'address' vào bảng users...")
+            cursor.execute("ALTER TABLE users ADD COLUMN address TEXT")
+            conn.commit()
+            logging.info("Đã cập nhật cấu trúc CSDL thành công.")
+
+        # Kiểm tra cột banner_type trong bảng banners
+        try:
+            cursor.execute("PRAGMA table_info(banners)")
+            columns_banners = [row[1] for row in cursor.fetchall()]
+            if columns_banners and 'banner_type' not in columns_banners:
+                logging.info("CSDL cũ: Đang thêm cột 'banner_type' vào bảng banners...")
+                cursor.execute("ALTER TABLE banners ADD COLUMN banner_type TEXT DEFAULT 'hero'")
+                conn.commit()
+            if columns_banners:
+                cursor.execute("UPDATE banners SET banner_type = 'hero' WHERE banner_type IS NULL OR banner_type = ''")
+                conn.commit()
+        except sqlite3.Error as e:
+            logging.warning(f"Bỏ qua migrate banners (bảng banners có thể chưa tồn tại): {e}")
+
+    except sqlite3.Error as e:
+        logging.error(f"Lỗi khi migration CSDL: {e}")
+    finally:
+        if conn:
+            conn.close()
+
 def initialize_database():
     """Khởi tạo cơ sở dữ liệu và nhập dữ liệu ban đầu."""
     logging.info("Bắt đầu quá trình khởi tạo cơ sở dữ liệu...")
-    #create_products_table()
-    #create_users_table()
-    #create_orders_tables()
-    #create_banners_table()
-    #import_initial_data_from_data()
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Kiểm tra xem bảng products có tồn tại và có dữ liệu chưa
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
+        needs_init = False
+        if not cursor.fetchone():
+            needs_init = True
+        else:
+            cursor.execute("SELECT COUNT(*) FROM products")
+            if cursor.fetchone()[0] == 0:
+                needs_init = True
+                
+        if needs_init:
+            logging.info("CSDL SQLite trống, đang nạp dữ liệu từ init.sql...")
+            init_sql_path = os.path.join(BASE_DIR, 'init.sql')
+            if os.path.exists(init_sql_path):
+                with open(init_sql_path, 'r', encoding='utf-8') as f:
+                    sql_script = f.read()
+                # Chuyển đổi cú pháp PostgreSQL sang SQLite
+                sql_script = sql_script.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+                cursor.executescript(sql_script)
+                conn.commit()
+    except Exception as e:
+        logging.error(f"Lỗi khi nạp dữ liệu từ init.sql: {e}")
+    finally:
+        if conn:
+            conn.close()
+        
+    migrate_database() # Tự động sửa lỗi thiếu cột
     logging.info("Hoàn tất khởi tạo cơ sở dữ liệu.")
 
-if __name__ == '__main__':
+# Tự động khởi tạo CSDL khi chạy bằng Docker (Gunicorn/Flask run)
+with app.app_context():
     initialize_database()
     ensure_admin_account()
-    app.run(debug=True, port=5000)
+
+if __name__ == '__main__':
+    print("\n" + "="*50)
+    print(" SERVER ĐANG CHẠY TẠI: http://127.0.0.1:5000")
+    if DATABASE_URL.startswith('postgres'):
+        print(" KẾT NỐI TỚI DATABASE: PostgreSQL")
+    else:
+        print(" KẾT NỐI TỚI DATABASE: SQLite")
+    print("="*50 + "\n")
+    # Khi chạy với Gunicorn, dòng này sẽ không được thực thi. Nó chỉ dành cho dev.
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)

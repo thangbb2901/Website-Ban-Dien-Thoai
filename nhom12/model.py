@@ -4,19 +4,33 @@ import sqlite3
 import uuid
 import logging
 import re
+import secrets
+from werkzeug.security import generate_password_hash
 # lien quan đến việc xử lý dữ liệu và kết nối cơ sở dữ liệu
 # model.py - Mô hình dữ liệu và các hàm xử lý liên quan đến cơ sở dữ liệu
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Đường dẫn đến cơ sở dữ liệu và tệp JSON
+# Đường dẫn đến cơ sở dữ liệu
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_FILE = os.path.join(BASE_DIR, 'products.db')
+
+# Thư mục data — khi chạy Docker sẽ được lưu vào named volume (sqlite_data)
+# Khi chạy local, fallback về BASE_DIR
+DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)  # Tự tạo thư mục nếu chưa tồn tại
+DB_FILE = os.path.join(DATA_DIR, 'products.db')
+import shutil
+old_db = os.path.join(BASE_DIR, 'products.db')
+if old_db != DB_FILE and os.path.exists(old_db):
+    if not os.path.exists(DB_FILE) or os.path.getsize(DB_FILE) == 0:
+        shutil.copy2(old_db, DB_FILE)
+logging.info(f"Sử dụng database tại: {DB_FILE}")
 
 # --- Các hàm khởi tạo bảng và xử lý dữ liệu ---
 def get_db_connection():
     """Kết nối đến cơ sở dữ liệu SQLite và trả về đối tượng kết nối."""
     conn = sqlite3.connect(DB_FILE)
+    conn.execute("PRAGMA foreign_keys = ON") # Kích hoạt hỗ trợ khóa ngoại
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -36,7 +50,8 @@ def product_row_to_dict(row):
             "cpu": row["detail_cpu"], "ram": row["detail_ram"], "rom": row["detail_rom"],
             "microUSB": row["detail_microUSB"], "memoryStick": row["detail_memoryStick"],
             "sim": row["detail_sim"], "battery": row["detail_battery"]
-        }
+        },
+        "quantity": row["quantity"]
     }
 
 def user_row_to_dict(row):
@@ -46,6 +61,7 @@ def user_row_to_dict(row):
     return {
         "username": row["username"], "ho": row["ho"], "ten": row["ten"],
         "email": row["email"],
+        "address": row["address"] if "address" in row.keys() else None,
         "products": json.loads(row["products"]) if row["products"] else [],
         "off": bool(row["off"]),
         "perm": row["perm"] if "perm" in row.keys() else 0
@@ -72,6 +88,7 @@ def banner_row_to_dict(row):
         "is_active": bool(row["is_active"]),
         "display_order": row["display_order"],
         "uploaded_at": row["uploaded_at"],
+        "banner_type": row["banner_type"] if "banner_type" in row.keys() else "hero",
         "image_url": f"/static/img/banners/{row['filename']}"
     }
 
@@ -126,12 +143,16 @@ def ensure_admin_account():
     try:
         cursor.execute("SELECT * FROM users WHERE username = 'admin'")
         if not cursor.fetchone():
+            default_admin_password = os.getenv('ADMIN_DEFAULT_PASSWORD') or secrets.token_urlsafe(12)
             cursor.execute('''
                 INSERT INTO users (username, pass, ho, ten, email, products, off, perm)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('admin', 'adadad', 'Admin', 'Account', 'admin@shop.com', '[]', 0, 1))
+            ''', ('admin', generate_password_hash(default_admin_password), 'Admin', 'Account', 'admin@shop.com', '[]', 0, 1))
             conn.commit()
-            logging.info("Đã tạo tài khoản admin mặc định (admin/adadad)")
+            if os.getenv('ADMIN_DEFAULT_PASSWORD'):
+                logging.info("Đã tạo tài khoản admin mặc định từ biến môi trường ADMIN_DEFAULT_PASSWORD.")
+            else:
+                logging.warning(f"Đã tạo tài khoản admin mặc định. Mật khẩu tạm thời: {default_admin_password}")
         else:
             logging.info("Tài khoản admin đã tồn tại.")
     except sqlite3.Error as e:

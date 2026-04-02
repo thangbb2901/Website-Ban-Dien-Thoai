@@ -28,7 +28,8 @@ CREATE TABLE products (
     detail_microUSB TEXT,
     detail_memoryStick TEXT,
     detail_sim TEXT,
-    detail_battery TEXT
+    detail_battery TEXT,
+    quantity INTEGER DEFAULT 50
 );
 
 -- --------------------------------------------------------
@@ -62,7 +63,7 @@ CREATE TABLE orders (
 -- Cấu trúc bảng `order_items`
 -- --------------------------------------------------------
 CREATE TABLE order_items (
-    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_item_id SERIAL PRIMARY KEY,
     order_id TEXT NOT NULL,
     product_masp TEXT NOT NULL,
     quantity INTEGER NOT NULL,
@@ -76,7 +77,7 @@ CREATE TABLE order_items (
 -- Cấu trúc bảng `banners`
 -- --------------------------------------------------------
 CREATE TABLE banners (
-    banner_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    banner_id SERIAL PRIMARY KEY,
     filename TEXT NOT NULL UNIQUE,
     alt_text TEXT,
     link_url TEXT,
@@ -84,6 +85,15 @@ CREATE TABLE banners (
     display_order INTEGER DEFAULT 0,
     uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- --------------------------------------------------------
+-- Chèn dữ liệu ban đầu cho bảng `banners` 
+-- --------------------------------------------------------
+INSERT INTO banners (filename, alt_text, link_url, is_active, display_order) VALUES
+('banner-1.jpg', 'Khuyến mãi mùa hè - Giảm giá lên đến 50%', '#/products', 1, 1),
+('banner-2.jpg', 'Điện thoại mới nhất 2024 - Công nghệ hàng đầu', '#/products', 1, 2),
+('banner-3.jpg', 'Miễn phí vận chuyển toàn quốc - Mua ngay', '#/products', 1, 3),
+('banner-4.jpg', 'Samsung Galaxy S24 - Tiêu chuẩn mới', '#/products', 1, 4);
 
 -- --------------------------------------------------------
 -- Chèn dữ liệu ban đầu cho bảng `products` 

@@ -56,15 +56,15 @@ async function khoiTao() {
             throw new Error(`Lỗi HTTP: ${response.status}`);
         }
         let productsFromAPI = await response.json();
-        
+
         if (Array.isArray(productsFromAPI)) {
             window.list_products = productsFromAPI.map(processProductImagePath);
         } else {
             window.list_products = [];
             console.warn("Dữ liệu sản phẩm từ API không phải là một mảng.");
         }
-        
-        setLocalStorageItem('ListProducts', window.list_products); 
+
+        setLocalStorageItem('ListProducts', window.list_products);
         console.log("Sản phẩm đã được tải từ API và đường dẫn ảnh đã được cập nhật.");
 
     } catch (error) {
@@ -75,21 +75,21 @@ async function khoiTao() {
         } else {
             window.list_products = [];
         }
-        
+
         if (window.list_products.length === 0) {
-            if(typeof addAlertBox === "function") addAlertBox('Không thể tải dữ liệu sản phẩm. Vui lòng kiểm tra kết nối hoặc thử lại sau!', '#aa0000', '#fff', 10000);
+            if (typeof addAlertBox === "function") addAlertBox('Không thể tải dữ liệu sản phẩm. Vui lòng kiểm tra kết nối hoặc thử lại sau!', '#aa0000', '#fff', 10000);
         } else {
-            if(typeof addAlertBox === "function") addAlertBox('Đang sử dụng dữ liệu offline. Một số thông tin có thể chưa được cập nhật.', '#ff8c00', '#fff', 5000);
+            if (typeof addAlertBox === "function") addAlertBox('Đang sử dụng dữ liệu offline. Một số thông tin có thể chưa được cập nhật.', '#ff8c00', '#fff', 5000);
         }
     }
-    
+
     var taikhoanModalContentDiv = document.querySelector('.containTaikhoan .taikhoan');
     if (taikhoanModalContentDiv && !originalTaikhoanContent) {
         originalTaikhoanContent = taikhoanModalContentDiv.innerHTML;
     }
 
     setupEventTaiKhoan();
-    capNhat_ThongTin_CurrentUser(); 
+    capNhat_ThongTin_CurrentUser();
     addEventCloseAlertButton();
 }
 
@@ -133,33 +133,33 @@ function copyObject(o) {
         return JSON.parse(JSON.stringify(o));
     } catch (e) {
         console.error("Lỗi khi copy object:", o, e);
-        return o; 
+        return o;
     }
 }
 
 // Hàm hiển thị thông báo
 // Hàm hiển thị thông báo
 function addAlertBox(text, bgcolor, textcolor, time, size = 'small') { // Thêm tham số 'size' với giá trị mặc định là 'normal'
-   var al = document.getElementById('alert');
+    var al = document.getElementById('alert');
     if (!al) {
         console.warn("Không tìm thấy phần tử #alert để hiển thị thông báo.");
         return;
     }
-    
-    var alertTextNode = al.firstChild; 
-    while(alertTextNode && alertTextNode.nodeType !== Node.TEXT_NODE && alertTextNode.id !== 'closebtn') {
+
+    var alertTextNode = al.firstChild;
+    while (alertTextNode && alertTextNode.nodeType !== Node.TEXT_NODE && alertTextNode.id !== 'closebtn') {
         alertTextNode = alertTextNode.nextSibling;
     }
-    if(alertTextNode && alertTextNode.id !== 'closebtn' && alertTextNode.nodeType === Node.TEXT_NODE) { 
-         alertTextNode.nodeValue = " " + text; 
-    } else { 
+    if (alertTextNode && alertTextNode.id !== 'closebtn' && alertTextNode.nodeType === Node.TEXT_NODE) {
+        alertTextNode.nodeValue = " " + text;
+    } else {
         var closeBtn = document.getElementById('closebtn');
         var newTextNode = document.createTextNode(" " + text);
-        if(closeBtn && closeBtn.nextSibling) {
+        if (closeBtn && closeBtn.nextSibling) {
             al.insertBefore(newTextNode, closeBtn.nextSibling);
         } else if (closeBtn) {
             al.appendChild(newTextNode);
-        } else { 
+        } else {
             al.insertBefore(newTextNode, al.firstChild);
         }
     }
@@ -179,14 +179,14 @@ function addAlertBox(text, bgcolor, textcolor, time, size = 'small') { // Thêm 
     al.style.backgroundColor = bgcolor;
     al.style.opacity = 1;
     al.style.zIndex = 2000; // Tăng z-index để đảm bảo nó trên cùng
-    al.style.display = 'block'; 
+    al.style.display = 'block';
 
     if (textcolor) al.style.color = textcolor;
     if (time) {
         setTimeout(function () {
             al.style.opacity = 0;
-            al.style.zIndex = -1; 
-            al.style.display = 'none'; 
+            al.style.zIndex = -1;
+            al.style.display = 'none';
         }, time);
     }
 }
@@ -231,7 +231,12 @@ function themVaoGioHang(masp, tensp) {
         addAlertBox('Tài khoản của bạn hiện đang bị khóa nên không thể mua hàng!', '#aa0000', '#fff', 10000, 'small');
         return;
     }
-    var t = new Date().toISOString(); 
+    const productInStock = Array.isArray(window.list_products) ? timKiemTheoMa(window.list_products, masp) : null;
+    if (productInStock && Number(productInStock.quantity) <= 0) {
+        addAlertBox(`Sản phẩm ${tensp} đã hết hàng!`, '#ff0000', '#fff', 3500, 'small');
+        return;
+    }
+    var t = new Date().toISOString();
     var daCoSanPham = false;
 
     if (!user.products) user.products = [];
@@ -239,7 +244,7 @@ function themVaoGioHang(masp, tensp) {
     for (var i = 0; i < user.products.length; i++) {
         if (user.products[i].ma == masp) {
             user.products[i].soluong = Number(user.products[i].soluong) + 1;
-            user.products[i].date = t; 
+            user.products[i].date = t;
             daCoSanPham = true;
             break;
         }
@@ -249,7 +254,7 @@ function themVaoGioHang(masp, tensp) {
         user.products.push({
             "ma": masp,
             "soluong": 1,
-            "date": t 
+            "date": t
         });
     }
 
@@ -257,7 +262,7 @@ function themVaoGioHang(masp, tensp) {
     addAlertBox(`Đã thêm ${tensp} vào giỏ.`, '#17c671', '#fff', 3500, 'small'); // <-- thêm 'small' ở đây
 
     setCurrentUser(user);
-    updateListUser(user); 
+    updateListUser(user);
     capNhat_ThongTin_CurrentUser();
 }
 
@@ -282,18 +287,18 @@ function setListUser(l) {
 }
 
 // Hàm cập nhật thông tin người dùng trong danh sách
-function updateListUser(u, newData) { 
-    if(!u || !u.username) return; // Không cập nhật nếu user không hợp lệ
+function updateListUser(u, newData) {
+    if (!u || !u.username) return; // Không cập nhật nếu user không hợp lệ
     var list = getListUser();
     var updated = false;
     for (var i = 0; i < list.length; i++) {
         if (list[i].username === u.username) {
-            list[i] = copyObject(newData || u); 
+            list[i] = copyObject(newData || u);
             updated = true;
             break;
         }
     }
-    if (!updated && !newData) { 
+    if (!updated && !newData) {
         list.push(copyObject(u));
     }
     setListUser(list);
@@ -301,7 +306,7 @@ function updateListUser(u, newData) {
 
 // Hàm đăng ký
 async function signUp(form) {
-    if(!form) return; // Bỏ return false
+    if (!form) return; // Bỏ return false
     var ho = form.ho.value.trim();
     var ten = form.ten.value.trim();
     var email = form.email.value.trim();
@@ -334,22 +339,22 @@ async function signUp(form) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newUser)
         });
-        
-        const data = await response.json(); 
+
+        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(data.error || `Lỗi HTTP ${response.status}`);
         }
-        
-        const createdUser = data.user || data; 
-        setCurrentUser(createdUser); 
-        
+
+        const createdUser = data.user || data;
+        setCurrentUser(createdUser);
+
         var listUser = getListUser();
         listUser.push(createdUser);
         setListUser(listUser);
 
-        addAlertBox('Đăng ký thành công! Bạn sẽ được tự động đăng nhập.', '#17c671', '#fff', 4000 , );
-        setTimeout(() => location.reload(), 1500); 
+        addAlertBox('Đăng ký thành công! Bạn sẽ được tự động đăng nhập.', '#17c671', '#fff', 4000,);
+        setTimeout(() => location.reload(), 1500);
 
     } catch (error) {
         addAlertBox(`Lỗi đăng ký: ${error.message}`, '#aa0000', '#fff', 5000);
@@ -371,34 +376,34 @@ function logIn(form) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, pass })
     })
-    .then(async response => {
-        const data = await response.json();
-        if (!response.ok) {
-            // Nếu có lỗi, ném ra để khối .catch() bên dưới xử lý.
-            throw new Error(data.error || 'Đăng nhập thất bại');
-        }
-        return data; // Chuyển dữ liệu (user hoặc thông báo admin) cho khối .then() tiếp theo.
-    })
-    .then(data => {
-        // KIỂM TRA PHẢN HỒI TỪ MÁY CHỦ
-        // Máy chủ sẽ cho biết đây có phải là admin hay không.
-        if (data.is_admin) { 
-            alert('Xin chào admin!');
-            window.location.assign('/admin'); // Chuyển hướng đến trang admin.
-        } else {
-            // Nếu là người dùng thường, lưu thông tin và tải lại trang.
-            setCurrentUser(data);
-            updateListUser(data);
-            alert('Đăng nhập thành công!');
-            location.reload();
-        }
-    })
-    .catch(error => {
-        // Hiển thị bất kỳ lỗi nào từ máy chủ hoặc lỗi mạng.
-        alert('Lỗi đăng nhập: ' + error.message);
-        console.error('Lỗi khi đăng nhập:', error);
-        if(form.username) form.username.focus();
-    });
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) {
+                // Nếu có lỗi, ném ra để khối .catch() bên dưới xử lý.
+                throw new Error(data.error || 'Đăng nhập thất bại');
+            }
+            return data; // Chuyển dữ liệu (user hoặc thông báo admin) cho khối .then() tiếp theo.
+        })
+        .then(data => {
+            // KIỂM TRA PHẢN HỒI TỪ MÁY CHỦ
+            // Máy chủ sẽ cho biết đây có phải là admin hay không.
+            if (data.is_admin) {
+                alert('Xin chào admin!');
+                window.location.assign('/admin'); // Chuyển hướng đến trang admin.
+            } else {
+                // Nếu là người dùng thường, lưu thông tin và tải lại trang.
+                setCurrentUser(data);
+                updateListUser(data);
+                alert('Đăng nhập thành công!');
+                location.reload();
+            }
+        })
+        .catch(error => {
+            // Hiển thị bất kỳ lỗi nào từ máy chủ hoặc lỗi mạng.
+            alert('Lỗi đăng nhập: ' + error.message);
+            console.error('Lỗi khi đăng nhập:', error);
+            if (form.username) form.username.focus();
+        });
 
     return false; // Luôn return false để ngăn form tự gửi đi.
 }
@@ -428,7 +433,7 @@ function checkTaiKhoan() {
 function setupEventTaiKhoan() {
     var containTaikhoanDiv = document.querySelector('.containTaikhoan');
     if (!containTaikhoanDiv) return;
-    var taikhoan = containTaikhoanDiv.querySelector('.taikhoan'); 
+    var taikhoan = containTaikhoanDiv.querySelector('.taikhoan');
     if (!taikhoan) return;
 
     var listInputs = taikhoan.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
@@ -440,7 +445,7 @@ function setupEventTaiKhoan() {
             // sau khi originalTaikhoanContent được tạo lại.
             input.addEventListener(evt, function (e) {
                 var label = this.previousElementSibling;
-                if (label && label.tagName === 'LABEL') { 
+                if (label && label.tagName === 'LABEL') {
                     if (e.type === 'blur') {
                         if (this.value === '') {
                             label.classList.remove('active', 'highlight');
@@ -456,7 +461,7 @@ function setupEventTaiKhoan() {
     });
 
     var tabs = taikhoan.querySelectorAll('.tab-group .tab a');
-    tabs.forEach(function(tabLink) {
+    tabs.forEach(function (tabLink) {
         // Tương tự, nếu setupEventTaiKhoan được gọi nhiều lần trên cùng cấu trúc DOM mà không clear event cũ,
         // bạn có thể cần remove event listener cũ trước khi add cái mới.
         // Tuy nhiên, với việc taikhoanDiv.innerHTML = originalTaikhoanContent;
@@ -469,33 +474,33 @@ function setupEventTaiKhoan() {
             currentTabLi.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             currentTabLi.classList.add('active');
 
-            var targetId = this.getAttribute('href').substring(1); 
+            var targetId = this.getAttribute('href').substring(1);
             var targetContent = document.getElementById(targetId);
             var tabContainer = taikhoan.querySelector('.tab-content');
 
             if (tabContainer && targetContent) {
                 Array.from(tabContainer.children).forEach(contentDiv => {
-                    if(contentDiv.id) contentDiv.style.display = 'none';
+                    if (contentDiv.id) contentDiv.style.display = 'none';
                 });
                 targetContent.style.display = 'block';
             }
         });
     });
-    
+
     const defaultLoginTabLink = taikhoan.querySelector('.tab-group .tab a[href="#login"]');
     if (defaultLoginTabLink) {
         const isActiveTabPresent = taikhoan.querySelector('.tab-group .tab.active');
-        if(!isActiveTabPresent) {
+        if (!isActiveTabPresent) {
             defaultLoginTabLink.click();
-        } else { 
+        } else {
             const activeHref = isActiveTabPresent.querySelector('a')?.getAttribute('href'); // Thêm optional chaining
-            if(activeHref){
+            if (activeHref) {
                 const activeContentId = activeHref.substring(1);
                 const activeContentDiv = document.getElementById(activeContentId);
                 const tabContainer = taikhoan.querySelector('.tab-content');
-                if(tabContainer && activeContentDiv){
-                     Array.from(tabContainer.children).forEach(contentDiv => {
-                        if(contentDiv.id) contentDiv.style.display = 'none';
+                if (tabContainer && activeContentDiv) {
+                    Array.from(tabContainer.children).forEach(contentDiv => {
+                        if (contentDiv.id) contentDiv.style.display = 'none';
                     });
                     activeContentDiv.style.display = 'block';
                 }
@@ -507,7 +512,7 @@ function setupEventTaiKhoan() {
     if (forgotLink) {
         // Gán sự kiện một lần hoặc đảm bảo gỡ bỏ listener cũ nếu gán lại
         if (!forgotLink.hasAttribute('data-event-forgot-attached')) {
-            forgotLink.onclick = function (e) { 
+            forgotLink.onclick = function (e) {
                 e.preventDefault();
                 showForgotPasswordForm();
             };
@@ -516,18 +521,18 @@ function setupEventTaiKhoan() {
     }
 
     // SỬA ĐỔI: Gán sự kiện submit cho form đăng nhập và đăng ký
-    const loginForm = taikhoan.querySelector('form[name="loginForm"]'); 
+    const loginForm = taikhoan.querySelector('form[name="loginForm"]');
     const signupForm = taikhoan.querySelector('form[name="signupForm"]');
-    
+
     if (loginForm && !loginForm.hasAttribute('data-event-attached')) {
-        loginForm.addEventListener('submit', async function(event) { // Thêm event listener
+        loginForm.addEventListener('submit', async function (event) { // Thêm event listener
             event.preventDefault(); // Ngăn chặn hành động submit mặc định
             await logIn(this);      // Gọi hàm logIn (async)
         });
         loginForm.setAttribute('data-event-attached', 'true');
     }
     if (signupForm && !signupForm.hasAttribute('data-event-attached')) {
-        signupForm.addEventListener('submit', async function(event) { // Thêm event listener
+        signupForm.addEventListener('submit', async function (event) { // Thêm event listener
             event.preventDefault(); // Ngăn chặn hành động submit mặc định
             await signUp(this);     // Gọi hàm signUp (async)
         });
@@ -575,13 +580,13 @@ function capNhat_ThongTin_CurrentUser() {
             cartNumberElement.innerHTML = '0'; // Đặt số lượng về 0
             cartNumberElement.style.display = 'none'; // Ẩn đi chấm đỏ/số lượng
 
-            // Đặt lại tên thành "Tài khoản"
+            // Đặt lại tên thành "Đăng nhập"
             if (memberLinkElement) {
-                const iconUser = memberLinkElement.querySelector('i.fa-user');
+                const iconUser = memberLinkElement.querySelector('i.fa-user-circle-o') || memberLinkElement.querySelector('i.fa-user');
                 if (iconUser) {
-                    memberLinkElement.innerHTML = iconUser.outerHTML + ' Tài khoản';
+                    memberLinkElement.innerHTML = iconUser.outerHTML + ' Đăng nhập';
                 } else {
-                    memberLinkElement.textContent = 'Tài khoản';
+                    memberLinkElement.textContent = ' Đăng nhập';
                 }
             }
 
@@ -598,7 +603,7 @@ function getTongSoLuongSanPhamTrongGioHang(u) {
     if (!u || !u.products || !Array.isArray(u.products)) return 0;
     var soluong = 0;
     for (var p of u.products) {
-        soluong += Number(p.soluong) || 0; 
+        soluong += Number(p.soluong) || 0;
     }
     return soluong;
 }
@@ -607,7 +612,7 @@ function getTongSoLuongSanPhamTrongGioHang(u) {
 function numToString(num, char) {
     if (typeof num !== 'number' && typeof num !== 'string') num = 0;
     num = Number(num) || 0;
-    return num.toLocaleString('vi-VN').split(',').join(char || '.'); 
+    return num.toLocaleString('vi-VN').split(',').join(char || '.');
 }
 
 // Định dạng chuỗi (có dấu phân cách) sang số
@@ -618,7 +623,7 @@ function stringToNum(str, char) {
 
 // Hàm autocomplete cho ô tìm kiếm
 function autocomplete(inp, arr) {
-    if(!inp || !Array.isArray(arr)) return;
+    if (!inp || !Array.isArray(arr)) return;
     var currentFocus;
 
     inp.addEventListener("input", function (e) { // Sử dụng "input" thay cho "keyup" để bắt cả paste
@@ -633,22 +638,22 @@ function autocomplete(inp, arr) {
         this.parentNode.appendChild(a);
 
         let count = 0;
-        for (i = 0; i < arr.length && count < 7; i++) { 
-            if (arr[i] && arr[i].name && arr[i].name.toUpperCase().includes(val.toUpperCase())) { 
+        for (i = 0; i < arr.length && count < 7; i++) {
+            if (arr[i] && arr[i].name && arr[i].name.toUpperCase().includes(val.toUpperCase())) {
                 b = document.createElement("DIV");
                 let matchIndex = arr[i].name.toUpperCase().indexOf(val.toUpperCase());
                 b.innerHTML = arr[i].name.substring(0, matchIndex) +
-                              "<strong>" + arr[i].name.substring(matchIndex, matchIndex + val.length) + "</strong>" +
-                              arr[i].name.substring(matchIndex + val.length);
+                    "<strong>" + arr[i].name.substring(matchIndex, matchIndex + val.length) + "</strong>" +
+                    arr[i].name.substring(matchIndex + val.length);
                 b.innerHTML += `<input type='hidden' value='${arr[i].name.replace(/'/g, "&apos;")}'>`; // Escape '
-                b.setAttribute('data-masp', arr[i].masp); 
+                b.setAttribute('data-masp', arr[i].masp);
 
                 b.addEventListener("click", function (e) {
                     inp.value = this.getElementsByTagName("input")[0].value;
                     closeAllLists();
                     var masp = this.getAttribute('data-masp');
                     // SỬA ĐỔI: Chuyển đến route /chitietsanpham
-                    if(masp) window.location.href = `/chitietsanpham?masp=${masp}`; 
+                    if (masp) window.location.href = `/chitietsanpham?masp=${masp}`;
                 });
                 a.appendChild(b);
                 count++;
@@ -668,11 +673,11 @@ function autocomplete(inp, arr) {
             currentFocus--;
             addActive(x);
         } else if (e.keyCode == 13) { // Enter
-            e.preventDefault(); 
+            e.preventDefault();
             if (currentFocus > -1) {
                 if (x) x[currentFocus].click();
-            } else { 
-                if(inp.form && typeof inp.form.submit === 'function') inp.form.submit();
+            } else {
+                if (inp.form && typeof inp.form.submit === 'function') inp.form.submit();
             }
         } else if (e.keyCode === 27) { // Escape
             closeAllLists();
@@ -710,7 +715,7 @@ function autocomplete(inp, arr) {
 
 // Hàm thêm tags vào khung tìm kiếm
 function addTags(nameTag, link) {
-    var khung_tags = document.querySelector('.search-header .tags'); 
+    var khung_tags = document.querySelector('.search-header .tags');
     if (khung_tags) {
         var firstChild = khung_tags.firstChild;
         // Nếu khung tags rỗng hoặc chỉ chứa text node là khoảng trắng, thì thêm "Từ khóa:"
@@ -719,19 +724,19 @@ function addTags(nameTag, link) {
         } else if (firstChild.nodeType === Node.ELEMENT_NODE && firstChild.tagName === 'STRONG' && firstChild.textContent.includes('Từ khóa:')) {
             // Đã có "Từ khóa:", không cần làm gì thêm ở đây, chỉ nối thẻ a
         } else if (khung_tags.innerHTML.trim() === "") { // Trường hợp rỗng hoàn toàn
-             khung_tags.innerHTML = "<strong>Từ khóa: </strong>";
+            khung_tags.innerHTML = "<strong>Từ khóa: </strong>";
         }
 
 
         var new_tag = `<a href="${link}">${nameTag}</a>`;
-        khung_tags.innerHTML += new_tag; 
+        khung_tags.innerHTML += new_tag;
     }
 }
 
 // Hàm thêm sản phẩm vào DOM (hoặc trả về chuỗi HTML)
 // QUAN TRỌNG: p.img phải là đường dẫn đã được sửa bởi khoiTao()
 function addProduct(p, ele, returnString) {
-    if (!p || !p.masp) return ''; 
+    if (!p || !p.masp) return '';
 
     // Giả định class Promo và Product đã được định nghĩa ở đâu đó (ví dụ: classes.js)
     var promo = (p.promo && typeof Promo === 'function') ? new Promo(p.promo.name, p.promo.value) : { name: p.promo && p.promo.name || '', value: p.promo && p.promo.value || '' };
@@ -741,7 +746,7 @@ function addProduct(p, ele, returnString) {
         product = new Product(p.masp, p.name, p.img, p.price, p.star, p.rateCount, promo);
     } else {
         console.error("Class Product is not defined! Using raw product object.");
-        product = p; 
+        product = p;
         product.img = product.img || '/static/img/default_product.png'; // Đảm bảo có ảnh default
     }
 
@@ -749,10 +754,10 @@ function addProduct(p, ele, returnString) {
     if (typeof addToWeb === 'function') {
         return addToWeb(product, ele, returnString);
     }
-    
+
     // Fallback HTML cơ bản nếu addToWeb không tồn tại
     console.warn("Hàm addToWeb chưa được định nghĩa. Sử dụng fallback HTML cơ bản.");
-    
+
     // SỬA ĐỔI: Link chi tiết sản phẩm trỏ đến route
     const productDetailLink = `/chitietsanpham?masp=${product.masp}`;
     let starsHTML = '';
@@ -766,17 +771,23 @@ function addProduct(p, ele, returnString) {
         }
     }
 
+    const stockQuantity = Number(p.quantity) || 0;
+    const stockHtml = stockQuantity > 0
+        ? `<div class="stock-info">Còn lại: <span class="stock-count" data-masp="${product.masp}">${stockQuantity}</span> máy</div>`
+        : `<div class="stock-info" style="color:#dc2626; font-weight:700;">Hết hàng</div>`;
+
     const productHTML = `
-        <li class="sanpham">
+        <li class="sanpham" data-masp="${product.masp}">
             <a href="${productDetailLink}">
                 <img class="hinhanh" src="${product.img}" alt="${product.name || 'Sản phẩm'}">
                 <h3 class="tensp">${product.name || 'N/A'}</h3>
                 <div class="price"><strong>${product.price ? numToString(product.price) : '0'}₫</strong></div>
                 <div class="ratingresult">${starsHTML}</div>
                 ${product.promo && product.promo.name ? `<label class="itemlabel ${product.promo.name.toLowerCase()}">${product.promo.value || promoToString(product.promo.name)}</label>` : ''}
+                ${stockHtml}
             </a>
         </li>`;
-    
+
     if (returnString) {
         return productHTML;
     } else if (ele && typeof ele.appendChild === 'function') {
@@ -794,73 +805,95 @@ function addProduct(p, ele, returnString) {
 // Tuy nhiên, thực hành tốt hơn là tạo các div container trong HTML
 // và dùng JS để điền nội dung vào đó.
 function addTopNav() {
+    // Navbar dưới header: danh mục sản phẩm + link trang phụ
     document.write(`
-    <div class="top-nav group">
-        <div class="topnav-center-vertical">
-            <div class="social-top-nav">
-                <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" class="fa fa-facebook" title="Facebook"></a>
-                <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" class="fa fa-twitter" title="Twitter"></a>
-                <a href="https://www.google.com" target="_blank" rel="noopener noreferrer" class="fa fa-google" title="Google"></a>
-                <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="fa fa-youtube" title="YouTube"></a>
-            </div>
-            <ul class="top-nav-quicklink flexContain">
-                <li><a href="/"><i class="fa fa-home"></i> Trang chủ</a></li>
-                <li><a href="/tintuc"><i class="fa fa-newspaper-o"></i> Tin tức</a></li>
-                <li><a href="/tuyendung"><i class="fa fa-handshake-o"></i> Tuyển dụng</a></li>
-                <li><a href="/gioithieu"><i class="fa fa-info-circle"></i> Giới thiệu</a></li>
-                <li><a href="/trungtambaohanh"><i class="fa fa-wrench"></i> Bảo hành</a></li>
-                <li><a href="/lienhe"><i class="fa fa-phone"></i> Liên hệ</a></li>
-            </ul>
-        </div>
-    </div>`);
-}
+    <nav class="main-navbar group">
+        <div class="navbar-inner">
+            <ul class="navbar-links">
+                <li class="nav-brand-picker">
+                    <a href="javascript:void(0);"><i class="fa fa-th-large"></i> Chọn hãng <i class="fa fa-angle-down"></i></a>
+                    <div class="nav-brand-menu">
+                        <a href="/?search=iPhone">iPhone</a>
+                        <a href="/?search=Samsung">Samsung</a>
+                        <a href="/?search=Oppo">Oppo</a>
+                        <a href="/?search=Xiaomi">Xiaomi</a>
+                        <a href="/?search=Huawei">Huawei</a>
+                        <a href="/?search=Realme">Realme</a>
+                        <a href="/?search=Vivo">Vivo</a>
+                        <a href="/?search=Nokia">Nokia</a>
+                        <a href="/?search=Itel">Itel</a>
+                        <a href="/?search=HTC">HTC</a>
+                        <a href="/?search=Motorola">Motorola</a>
+                    </div>
+                </li>
+                <li><a href="/?search=Samsung"><i class="fa fa-mobile"></i> Samsung</a></li>
+                <li><a href="/?search=iPhone"><i class="fa fa-apple"></i> iPhone</a></li>
+                <li><a href="/?search=Xiaomi"><i class="fa fa-mobile"></i> Xiaomi</a></li>
+                  <li><a href="/?search=Oppo"><i class="fa fa-mobile"></i> Oppo</a></li>
+                  <li><a href="/?search=Laptop"><i class="fa fa-laptop"></i> Laptop</a></li>
+                  <li><a href="/?search=Phu+kien"><i class="fa fa-headphones"></i> Phụ kiện</a></li>
+                  <li><a href="/?search=Smartwatch"><i class="fa fa-clock-o"></i> Smartwatch</a></li>
+              </ul>
+          </div>
+      </nav>`);
+  }
 
 function addHeader() {
-    // SỬA ĐỔI: src logo, action form, hrefs
     document.write(`
     <div class="header group">
-        <div class="logo">
-            <a href="/">
-                <img src="/static/img/logo.svg" alt="Trang chủ Smartphone Store" title="Trang chủ Smartphone Store">
-            </a>
-        </div>
-        <div class="content">
-            <div class="search-header"> 
-                <form class="input-search" method="get" action="/">
-                    <div class="autocomplete">
-                        <input id="search-box" name="search" autocomplete="off" type="text" placeholder="Nhập từ khóa tìm kiếm...">
-                        <button type="submit">
-                            <i class="fa fa-search"></i>
-                            Tìm kiếm
-                        </button>
-                    </div>
-                </form>
-                <div class="tags">
-                    <strong>Từ khóa: </strong>
-                </div>
+        <div class="header-inner">
+            <div class="logo">
+                <a href="/">
+                    <img src="/static/img/logo.svg" alt="Trang chủ Smartphone Store" title="Trang chủ Smartphone Store">
+                </a>
             </div>
-            <div class="tools-member">
-                <div class="member">
-                    <a href="javascript:void(0);" onclick="checkTaiKhoan();"> <!-- Sửa thành javascript:void(0); để không điều hướng -->
-                        <i class="fa fa-user"></i>
-                        Tài khoản
+
+            <form class="input-search" method="get" action="/">
+                <div class="autocomplete">
+                    <input id="search-box" name="search" autocomplete="off" type="text" placeholder="Bạn tìm gì...">
+                    <button type="submit">
+                        <i class="fa fa-search"></i>
+                    </button>
+                </div>
+            </form>
+
+              <div class="tools-member">
+                  <div class="member">
+                      <a href="javascript:void(0);" onclick="checkTaiKhoan();">
+                          <i class="fa fa-user-circle-o"></i>
+                          Đăng nhập
                     </a>
                     <div class="menuMember hide">
                         <a href="/nguoidung">Trang người dùng</a>
                         <a href="javascript:void(0);" onclick="if(window.confirm('Xác nhận đăng xuất ?')) logOut();">Đăng xuất</a>
                     </div>
                 </div>
-                <div class="cart">
-                    <a href="/giohang">
-                        <i class="fa fa-shopping-cart"></i>
-                        <span>Giỏ hàng</span>
-                        <span class="cart-number"></span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>`);
-}
+                  <div class="cart">
+                      <a href="/giohang">
+                          <i class="fa fa-shopping-cart"></i>
+                          <span>Giỏ hàng</span>
+                          <span class="cart-number"></span>
+                      </a>
+                  </div>
+                  <div class="header-location">
+                      <a href="javascript:void(0);" onclick="toggleHeaderLocationMenu(event);">
+                          <i class="fa fa-map-marker"></i>
+                          <span id="header-location-label">Chọn vị trí</span>
+                          <i class="fa fa-angle-right"></i>
+                      </a>
+                      <div class="header-location-menu" id="header-location-menu">
+                          <div class="header-location-menu-inner">
+                              <h4>Chọn tỉnh / thành phố</h4>
+                              <select id="header-location-province" onchange="handleHeaderLocationChange(this)">
+                                  <option value="" disabled selected hidden>Chọn tỉnh / thành phố</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>`);
+  }
 // Trong doannhom12/js/dungchung.js
 
 // ... (các hàm khác của bạn) ...
@@ -913,17 +946,24 @@ function addFooter() {
                 </div>
             </div>
 
-            <div class="footer-col">
-                <h3 class="footer-title">Liên kết sàn thương mại điện tử</h3>
-                <div class="social-links">
-                    <a href="#" title="Shopee"><img src="/static/img/logoicon/shopee.png" alt="Shopee"></a>
-                    <a href="#" title="Lazada"><img src="/static/img/logoicon/lazada.png" alt="Lazada"></a>
-                    <a href="#" title="Tiki"><img src="/static/img/logoicon/tiki.png" alt="Tiki"></a>
-                    <a href="#" title="Sendo"><img src="/static/img/logoicon/sendo.png" alt="Sendo"></a>
-                </div>
-                <h3 class="footer-title">Hình thức thanh toán</h3>
-                <div class="payment-methods">
-                    <span class="payment-icon"><i class="fa fa-money"></i> Tiền mặt</span>
+              <div class="footer-col">
+                  <h3 class="footer-title">Liên kết sàn thương mại điện tử</h3>
+                  <div class="social-links">
+                      <a href="#" title="Shopee"><img src="/static/img/logoicon/shopee.png" alt="Shopee"></a>
+                      <a href="#" title="Lazada"><img src="/static/img/logoicon/lazada.png" alt="Lazada"></a>
+                      <a href="#" title="Tiki"><img src="/static/img/logoicon/tiki.png" alt="Tiki"></a>
+                      <a href="#" title="Sendo"><img src="/static/img/logoicon/sendo.png" alt="Sendo"></a>
+                  </div>
+                  <h3 class="footer-title">Thông tin</h3>
+                  <div class="footer-quick-links">
+                      <a href="/tintuc">Tin tức</a>
+                      <a href="/trungtambaohanh">Bảo hành</a>
+                      <a href="/tuyendung">Tuyển dụng</a>
+                      <a href="/lienhe">Liên hệ</a>
+                  </div>
+                  <h3 class="footer-title">Hình thức thanh toán</h3>
+                  <div class="payment-methods">
+                      <span class="payment-icon"><i class="fa fa-money"></i> Tiền mặt</span>
                     <span class="payment-icon"><i class="fa fa-exchange"></i> Chuyển khoản</span>
                     <span class="payment-icon"><i class="fa fa-cc-visa"></i> Visa</span>
                     <span class="payment-icon"><i class="fa fa-cc-mastercard"></i> Mastercard</span>
@@ -1000,7 +1040,7 @@ function addContainTaiKhoan() {
             </div>
         </div>
     </div>`;
-    
+
     document.body.insertAdjacentHTML('beforeend', taiKhoanHTML);
     // Lưu lại nội dung gốc sau khi HTML được chèn vào DOM lần đầu
     var taikhoanModalContentDiv = document.querySelector('.containTaikhoan .taikhoan');
@@ -1040,6 +1080,91 @@ function getRandomColor() { /* ... Giữ nguyên ... */ }
 function auto_Get_Database() { /* ... Giữ nguyên, nhưng có thể không còn hữu ích ... */ }
 function getThongTinSanPhamFrom_TheGioiDiDong() { /* ... Giữ nguyên, bookmarklet ... */ }
 
+function ensureAIChatWidget() {
+    if (!document.getElementById('ai-chat-widget')) {
+        const widgetWrapper = document.createElement('div');
+        widgetWrapper.innerHTML = `
+            <div id="ai-chat-widget">
+                <button id="chat-toggle-button">
+                    <i class="fa fa-comments"></i> MI AI
+                </button>
+                <div id="chat-window" class="hidden">
+                    <div id="chat-header">
+                        <div class="header-info">
+                            <i class="fa fa-robot"></i>
+                            <span>MI AI</span>
+                        </div>
+                        <button id="chat-close-button">×</button>
+                    </div>
+                    <div id="chat-messages"></div>
+                    <div id="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Bạn muốn tìm máy gì...">
+                        <button id="chat-send-button"><i class="fa fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(widgetWrapper.firstElementChild);
+    }
+
+    if (!document.querySelector('link[data-ai-chat-style="true"]')) {
+        const cssLink = document.createElement('link');
+        cssLink.rel = 'stylesheet';
+        cssLink.href = '/static/css/ai-chat.css';
+        cssLink.setAttribute('data-ai-chat-style', 'true');
+        document.head.appendChild(cssLink);
+    }
+
+    if (!document.querySelector('script[data-ai-chat-script="true"]')) {
+        const script = document.createElement('script');
+        script.src = '/static/js/ai-chat.js';
+        script.setAttribute('data-ai-chat-script', 'true');
+        document.body.appendChild(script);
+    } else if (typeof window.initAIChatWidget === 'function') {
+        window.initAIChatWidget();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', ensureAIChatWidget);
+
+function attachFloatingLabelEvents(inputs, focusFieldName = "") {
+    ['blur', 'focus', 'input'].forEach(function (evt) {
+        inputs.forEach(function (input) {
+            input.addEventListener(evt, function (e) {
+                var label = this.previousElementSibling;
+                if (label && label.tagName === 'LABEL') {
+                    if (e.type === 'focus') {
+                        label.classList.add('active', 'highlight');
+                    } else if (e.type === 'blur') {
+                        if (this.value.trim() === '') {
+                            label.classList.remove('active', 'highlight');
+                        } else {
+                            label.classList.add('active');
+                            label.classList.remove('highlight');
+                        }
+                    } else if (e.type === 'input') {
+                        if (this.value.trim() === '') {
+                            label.classList.remove('active');
+                        } else {
+                            label.classList.add('active');
+                        }
+                    }
+                }
+            });
+
+            if (input.value.trim() !== '') {
+                var label = input.previousElementSibling;
+                if (label && label.tagName === 'LABEL') {
+                    label.classList.add('active');
+                }
+            }
+
+            if (focusFieldName && input.name === focusFieldName) {
+                input.focus();
+            }
+        });
+    });
+}
+
 
 // Các hàm quên mật khẩu
 function showForgotPasswordForm() {
@@ -1050,8 +1175,8 @@ function showForgotPasswordForm() {
     }
 
     taikhoanDiv.innerHTML = `
-        <h1>Đặt lại mật khẩu - Bước 1/2</h1>
-        <form name="formForgotPasswordStep1"> <!-- Bỏ onsubmit, gán bằng JS -->
+        <h1>Đặt lại mật khẩu - Bước 1/3</h1>
+        <form name="formForgotPasswordStep1">
             <div class="field-wrap">
                 <label>Nhập địa chỉ Email đã đăng ký <span class="req">*</span></label>
                 <input name="email" type="email" required autocomplete="off" />
@@ -1064,27 +1189,15 @@ function showForgotPasswordForm() {
     `;
     const formStep1 = taikhoanDiv.querySelector('form[name="formForgotPasswordStep1"]');
     if (formStep1 && !formStep1.hasAttribute('data-event-attached')) {
-        formStep1.onsubmit = function() { return handleForgotPassword_Step1(this); };
+        formStep1.onsubmit = function (e) { e.preventDefault(); handleForgotPassword_Step1(this); return false; };
         formStep1.setAttribute('data-event-attached', 'true');
-        // Áp dụng lại hiệu ứng label
         var listInputs = formStep1.querySelectorAll('input');
-        ['blur', 'focus'].forEach(function (evt) {
-            listInputs.forEach(function (input) {
-                input.addEventListener(evt, function (e) {
-                    var label = this.previousElementSibling;
-                    if (label && label.tagName === 'LABEL') {
-                        if (e.type === 'blur') { if (this.value === '') { label.classList.remove('active', 'highlight'); } else { label.classList.remove('highlight');}}
-                        else if (e.type === 'focus') { label.classList.add('active', 'highlight'); }
-                    }
-                });
-                if(input.type === 'email') input.focus();
-            });
-        });
+        attachFloatingLabelEvents(listInputs, 'email');
     }
 }
 
 async function handleForgotPassword_Step1(form) {
-    if(!form) return false;
+    if (!form) return false;
     var email = form.email.value.trim();
     if (!email) {
         addAlertBox('Vui lòng nhập địa chỉ email.', '#ff0000', '#fff', 3000);
@@ -1094,28 +1207,93 @@ async function handleForgotPassword_Step1(form) {
         addAlertBox('Email không hợp lệ.', '#ff0000', '#fff', 3000);
         return false;
     }
-    
-    // Trong thực tế, nên gọi API để kiểm tra email và gửi mã xác nhận/link reset
-    // Hiện tại, giả sử kiểm tra trong localStorage
-    var listUser = getListUser(); 
-    var userToReset = listUser.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
 
-    if (!userToReset) {
-        addAlertBox('Email không tồn tại trong hệ thống hoặc chưa được đăng ký!', '#ff0000', '#fff', 4000);
-        return false;
+    try {
+        const response = await fetch('/api/password-reset/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            addAlertBox(data.error || 'Đã có lỗi xảy ra khi gửi email xác thực.', '#ff0000', '#fff', 6000);
+            return false;
+        }
+        // Hiển thị thông báo thành công
+        addAlertBox('Mã OTP đã được gửi! Vui lòng kiểm tra hộp thư (và cả mục Spam/Quảng cáo).', '#17c671', '#fff', 6000);
+        showOTPVerificationForm(email);
+
+    } catch (err) {
+        console.error("Lỗi gọi API gửi email:", err);
+        addAlertBox('Lỗi kết nối máy chủ gửi thư: ' + err.message, '#ff0000', '#fff', 7000);
     }
-    showSetNewPasswordForm(userToReset.username, email);
-    return false; 
+
+    return false;
 }
 
-function showSetNewPasswordForm(username, emailForDisplay) {
+function showOTPVerificationForm(emailForDisplay) {
     var taikhoanDiv = document.querySelector('.containTaikhoan .taikhoan');
     if (!taikhoanDiv) return;
 
     taikhoanDiv.innerHTML = `
-        <h1>Đặt lại mật khẩu - Bước 2/2</h1>
-        <p style="text-align:center; margin-bottom:10px; color:#b0b0b0; font-size:0.9em;">Đặt mật khẩu mới cho tài khoản: <strong>${username}</strong></p>
-        <form name="formSetNewPassword"> <!-- Bỏ onsubmit -->
+        <h1>Xác thực OTP - Bước 2/3</h1>
+        <p style="text-align:center; margin-bottom:10px; color:#b0b0b0; font-size:0.9em;">Mã OTP (6 số) đã được gửi đến: <strong>${emailForDisplay}</strong></p>
+        <form name="formOTPVerification">
+            <div class="field-wrap">
+                <label>Nhập mã OTP <span class="req">*</span></label>
+                <input name="otpInput" type="text" required autocomplete="off" maxlength="6" />
+            </div>
+            <button type="submit" class="button">Xác nhận</button>
+        </form>
+        <div class="back-to-login" style="text-align:center; margin-top:20px; font-size:14px;">
+            <a href="javascript:void(0);" onclick="showForgotPasswordForm();">Quay lại Bước 1</a>
+        </div>
+    `;
+    const formOTP = taikhoanDiv.querySelector('form[name="formOTPVerification"]');
+    if (formOTP && !formOTP.hasAttribute('data-event-attached')) {
+        formOTP.onsubmit = function (e) { e.preventDefault(); handleOTPVerification_Step2(this, emailForDisplay); return false; };
+        formOTP.setAttribute('data-event-attached', 'true');
+
+        var listInputs = formOTP.querySelectorAll('input');
+        attachFloatingLabelEvents(listInputs, 'otpInput');
+    }
+}
+
+async function handleOTPVerification_Step2(form, emailForDisplay) {
+    if (!form) return false;
+    var otpInput = form.otpInput.value.trim();
+    if (!otpInput) {
+        addAlertBox('Vui lòng nhập mã OTP.', '#ff0000', '#fff', 3000);
+        return false;
+    }
+
+    try {
+        const response = await fetch('/api/password-reset/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailForDisplay, otp: otpInput })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            addAlertBox(data.error || 'Mã OTP không chính xác!', '#ff0000', '#fff', 3000);
+            return false;
+        }
+        showSetNewPasswordForm(emailForDisplay);
+    } catch (error) {
+        addAlertBox('Không thể xác thực OTP lúc này.', '#ff0000', '#fff', 3000);
+    }
+    return false;
+}
+
+function showSetNewPasswordForm(emailForDisplay) {
+    var taikhoanDiv = document.querySelector('.containTaikhoan .taikhoan');
+    if (!taikhoanDiv) return;
+
+    taikhoanDiv.innerHTML = `
+        <h1>Đặt lại mật khẩu - Bước 3/3</h1>
+        <p style="text-align:center; margin-bottom:10px; color:#b0b0b0; font-size:0.9em;">Đặt mật khẩu mới cho Gmail: <strong>${emailForDisplay}</strong></p>
+        <form name="formSetNewPassword">
             <div class="field-wrap">
                 <label>Mật khẩu mới <span class="req">*</span></label>
                 <input name="newPassword" type="password" required autocomplete="off" minlength="6" />
@@ -1127,32 +1305,20 @@ function showSetNewPasswordForm(username, emailForDisplay) {
             <button type="submit" class="button">Hoàn tất & Đặt lại</button>
         </form>
         <div class="back-to-login" style="text-align:center; margin-top:20px; font-size:14px;">
-            <a href="javascript:void(0);" onclick="showForgotPasswordForm();">Quay lại Bước 1</a>
+            <a href="javascript:void(0);" onclick="showTaiKhoan(true);">Hủy & Quay lại đăng nhập</a>
         </div>
     `;
-    const formStep2 = taikhoanDiv.querySelector('form[name="formSetNewPassword"]');
-    if (formStep2 && !formStep2.hasAttribute('data-event-attached')) {
-        formStep2.onsubmit = function() { return handleSetNewPassword_Step2(this, username); };
-        formStep2.setAttribute('data-event-attached', 'true');
-        // Áp dụng lại hiệu ứng label
-        var listInputs = formStep2.querySelectorAll('input');
-        ['blur', 'focus'].forEach(function (evt) {
-            listInputs.forEach(function (input) {
-                input.addEventListener(evt, function (e) {
-                    var label = this.previousElementSibling;
-                    if (label && label.tagName === 'LABEL') {
-                         if (e.type === 'blur') { if (this.value === '') { label.classList.remove('active', 'highlight'); } else { label.classList.remove('highlight');}}
-                        else if (e.type === 'focus') { label.classList.add('active', 'highlight'); }
-                    }
-                });
-                if(input.name === 'newPassword') input.focus();
-            });
-        });
+    const formStep3 = taikhoanDiv.querySelector('form[name="formSetNewPassword"]');
+    if (formStep3 && !formStep3.hasAttribute('data-event-attached')) {
+        formStep3.onsubmit = function (e) { e.preventDefault(); handleSetNewPassword_Step3(this); return false; };
+        formStep3.setAttribute('data-event-attached', 'true');
+        var listInputs = formStep3.querySelectorAll('input');
+        attachFloatingLabelEvents(listInputs, 'newPassword');
     }
 }
 
-async function handleSetNewPassword_Step2(form, username) {
-    if(!form || !username) return false;
+async function handleSetNewPassword_Step3(form) {
+    if (!form) return false;
     const newPassword = form.newPassword.value;
     const confirmNewPassword = form.confirmNewPassword.value;
 
@@ -1165,8 +1331,8 @@ async function handleSetNewPassword_Step2(form, username) {
         return false;
     }
     if (newPassword !== confirmNewPassword) {
-        addAlertBox('Mật khẩu mới và xác nhận mật khẩu không khớp!', '#ff0000', '#fff', 3000);
-        if(form.confirmNewPassword) {
+        addAlertBox('Mật khẩu mới và xác nhận không khớp!', '#ff0000', '#fff', 3000);
+        if (form.confirmNewPassword) {
             form.confirmNewPassword.value = "";
             form.confirmNewPassword.focus();
         }
@@ -1174,10 +1340,10 @@ async function handleSetNewPassword_Step2(form, username) {
     }
 
     try {
-        const response = await fetch(`/api/reset-password/${username}`, { // SỬA ĐỔI: Đường dẫn API tương đối
-            method: 'PUT',
+        const response = await fetch('/api/password-reset/complete', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pass: newPassword }) // Backend nên chỉ nhận `pass` hoặc `new_password`
+            body: JSON.stringify({ pass: newPassword })
         });
 
         const data = await response.json();
@@ -1185,27 +1351,9 @@ async function handleSetNewPassword_Step2(form, username) {
         if (!response.ok) {
             throw new Error(data.error || `Lỗi HTTP ${response.status}`);
         }
-        
-        const updatedUser = data.user || data; // Giả sử API trả về user đã cập nhật
 
-        let listUser = getListUser();
-        const userIndex = listUser.findIndex(u => u.username === username);
-        if (userIndex !== -1) {
-            listUser[userIndex] = updatedUser; 
-        } else { 
-            // Không nên xảy ra nếu email đã được xác thực ở bước 1, nhưng vẫn phòng trường hợp
-            listUser.push(updatedUser); 
-        }
-        setListUser(listUser);
-
-        const currentUser = getCurrentUser();
-        if (currentUser && currentUser.username === username) {
-            logOut(); // Đăng xuất user hiện tại nếu đó là user vừa đổi pass
-            addAlertBox('Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập lại.', '#17c671', '#fff', 7000);
-        } else {
-            addAlertBox(`Mật khẩu cho tài khoản '${username}' đã được đặt lại thành công!`, '#17c671', '#fff', 5000);
-            showTaiKhoan(true); // Mở lại modal đăng nhập
-        }
+        addAlertBox('Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập lại.', '#17c671', '#fff', 7000);
+        showTaiKhoan(true);
 
     } catch (error) {
         console.error('Lỗi khi đặt lại mật khẩu:', error);
@@ -1220,7 +1368,7 @@ async function handleSetNewPassword_Step2(form, username) {
 var gotoTopButton = document.getElementById("goto-top-page");
 
 // Hiển thị nút khi người dùng cuộn xuống 100px từ đầu trang
-window.onscroll = function() {
+window.onscroll = function () {
     scrollFunction();
 };
 
@@ -1237,7 +1385,198 @@ function scrollFunction() {
 // Hàm xử lý sự kiện khi nhấn nút để cuộn lên đầu trang
 function gotoTop() {
     // Cho trình duyệt Chrome, Firefox, IE và Opera
-    document.body.scrollTop = 0; 
+    document.body.scrollTop = 0;
     // Cho Safari
-    document.documentElement.scrollTop = 0; 
+    document.documentElement.scrollTop = 0;
 }
+
+// ================== REAL-TIME STOCK UPDATE (SOCKET.IO) ==================
+var socket;
+function initSocket() {
+    if (typeof io !== 'undefined') {
+        socket = io();
+        socket.on('update_stock', function (data) {
+            console.log("Real-time Stock Update:", data);
+            updateQuantityInDOM(data.masp, data.new_quantity);
+        });
+    } else {
+        console.warn("Socket.io client library not loaded yet.");
+    }
+}
+
+function updateQuantityInDOM(masp, quantity) {
+    // Cập nhật trong các thẻ sản phẩm (danh sách)
+    const stockSpans = document.querySelectorAll(`.stock-count[data-masp="${masp}"]`);
+    stockSpans.forEach(span => {
+        span.textContent = quantity;
+
+        // Hiệu ứng nháy màu khi cập nhật
+        span.parentElement.style.transition = 'color 0.3s ease';
+        span.parentElement.style.color = '#ff8c00';
+        setTimeout(() => {
+            span.parentElement.style.color = '';
+        }, 1000);
+    });
+
+    // Cập nhật trong trang chi tiết sản phẩm (nếu đang mở đúng sp đó)
+    const detailStock = document.querySelector(`.detail-stock-count[data-masp="${masp}"]`);
+    if (detailStock) {
+        detailStock.textContent = Number(quantity) > 0 ? `${quantity} máy` : 'Hết hàng';
+        detailStock.style.color = Number(quantity) > 0 ? '#ff8c00' : '#ff0000';
+    }
+}
+
+// Chạy khởi tạo socket sau khi trang load
+window.addEventListener('DOMContentLoaded', initSocket);
+
+const HEADER_LOCATION_STORAGE_KEY = 'headerSelectedLocation';
+
+function updateHeaderLocationLabel(locationName) {
+    const label = document.getElementById('header-location-label');
+    if (!label) return;
+    label.textContent = locationName || 'Chọn vị trí';
+}
+
+function toggleHeaderLocationMenu(event) {
+    if (event) event.stopPropagation();
+    const wrapper = document.querySelector('.header-location');
+    if (!wrapper) return;
+    wrapper.classList.toggle('open');
+}
+
+function closeHeaderLocationMenu() {
+    const wrapper = document.querySelector('.header-location');
+    if (!wrapper) return;
+    wrapper.classList.remove('open');
+}
+
+function handleHeaderLocationChange(selectElement) {
+    if (!selectElement) return;
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const locationName = selectedOption ? selectedOption.textContent.trim() : '';
+    if (!locationName) return;
+
+    localStorage.setItem(HEADER_LOCATION_STORAGE_KEY, locationName);
+    updateHeaderLocationLabel(locationName);
+    closeHeaderLocationMenu();
+}
+
+function initHeaderLocationPicker() {
+    const provinceSelect = document.getElementById('header-location-province');
+    if (!provinceSelect) return;
+
+    const savedLocation = localStorage.getItem(HEADER_LOCATION_STORAGE_KEY);
+    updateHeaderLocationLabel(savedLocation);
+    loadProvinces('header-location-');
+
+    document.addEventListener('click', function (event) {
+        const wrapper = document.querySelector('.header-location');
+        if (!wrapper) return;
+        if (!wrapper.contains(event.target)) {
+            closeHeaderLocationMenu();
+        }
+    });
+}
+
+// ================== ADDRESS PICKER LOGIC (SHARED) ==================
+function getAddressFieldPrefix(elementId = "") {
+    const match = elementId.match(/^(.*-)(province|district|ward)$/);
+    return match ? match[1] : "";
+}
+
+async function loadProvinces(idPrefix = "") {
+    const provinceSelect = document.getElementById(idPrefix + 'province');
+    if (!provinceSelect) return;
+
+    // Nếu đã có dữ liệu rồi thì không tải lại
+    if (provinceSelect.options.length > 1) return;
+
+    try {
+        const response = await fetch('https://provinces.open-api.vn/api/p/');
+        const provinces = await response.json();
+
+        provinces.sort((a, b) => a.name.localeCompare(b.name));
+
+        provinces.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.code;
+            option.textContent = p.name;
+            provinceSelect.appendChild(option);
+        });
+    } catch (e) {
+        console.error("Lỗi tải tỉnh thành:", e);
+    }
+}
+
+async function loadDistricts(provinceCode, idPrefix = "") {
+    const districtSelect = document.getElementById(idPrefix + 'district');
+    const wardSelect = document.getElementById(idPrefix + 'ward');
+    if (!districtSelect) return;
+
+    districtSelect.innerHTML = '<option value="" disabled selected hidden>Chọn Quận / Huyện</option>';
+    districtSelect.disabled = true;
+    if (wardSelect) {
+        wardSelect.innerHTML = '<option value="" disabled selected hidden>Chọn Phường / Xã</option>';
+        wardSelect.disabled = true;
+    }
+
+    if (!provinceCode) return;
+
+    try {
+        const response = await fetch(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`);
+        const data = await response.json();
+        const districts = data.districts;
+
+        districts.sort((a, b) => a.name.localeCompare(b.name));
+        districts.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.code;
+            option.textContent = d.name;
+            districtSelect.appendChild(option);
+        });
+        districtSelect.disabled = false;
+    } catch (e) {
+        console.error("Lỗi tải quận huyện:", e);
+    }
+}
+
+async function loadWards(districtCode, idPrefix = "") {
+    const wardSelect = document.getElementById(idPrefix + 'ward');
+    if (!wardSelect) return;
+
+    wardSelect.innerHTML = '<option value="" disabled selected hidden>Chọn Phường / Xã</option>';
+    wardSelect.disabled = true;
+
+    if (!districtCode) return;
+
+    try {
+        const response = await fetch(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`);
+        const data = await response.json();
+        const wards = data.wards;
+
+        wards.sort((a, b) => a.name.localeCompare(b.name));
+        wards.forEach(w => {
+            const option = document.createElement('option');
+            option.value = w.code;
+            option.textContent = w.name;
+            wardSelect.appendChild(option);
+        });
+        wardSelect.disabled = false;
+    } catch (e) {
+        console.error("Lỗi tải phường xã:", e);
+    }
+}
+
+// Lắng nghe sự kiện change trên toàn cục nhưng chỉ xử lý cho province/district
+document.addEventListener('change', function (e) {
+    const targetId = e.target.id || "";
+    const idPrefix = getAddressFieldPrefix(targetId);
+
+    if (targetId === 'province' || targetId.endsWith('-province')) {
+        loadDistricts(e.target.value, idPrefix);
+    } else if (targetId === 'district' || targetId.endsWith('-district')) {
+        loadWards(e.target.value, idPrefix);
+    }
+});
+
+window.addEventListener('DOMContentLoaded', initHeaderLocationPicker);

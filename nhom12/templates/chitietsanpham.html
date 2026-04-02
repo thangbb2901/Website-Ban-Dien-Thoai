@@ -27,14 +27,15 @@
     <script src="{{ url_for('static', filename='js/classes.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dungchung.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chitietsanpham.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 
 <body>
 
+    <script> addHeader(); </script>
     <script> addTopNav(); </script>
 
     <section>
-        <script> addHeader(); </script>
 
         <div id="productNotFound" style="min-height: 50vh; text-align: center; margin: 50px; display: none;">
             <h1 style="color: red; margin-bottom: 10px;">Không tìm thấy sản phẩm</h1>
@@ -42,52 +43,89 @@
         </div>
 
         <div class="chitietSanpham" style="margin-bottom: 100px">
-            <h1>Điện thoại </h1>
-            <div class="rating"></div>
-            <div class="rowdetail group">
-                <div class="picture">
-                    <img src="" onclick="opencertain()">
-                </div>
-                <div class="price_sale">
-                    <div class="area_price"> </div>
-                    <div class="ship" style="display: none;">
-                        <img src="{{ url_for('static', filename='img/chitietsanpham/clock-152067_960_720.png') }}">
-                        <div>NHẬN HÀNG TRONG 1 GIỜ</div>
-                    </div>
-                    <div class="area_promo">
-                        <strong>khuyến mãi</strong>
-                        <div class="promo">
-                            <img src="{{ url_for('static', filename='img/chitietsanpham/icon-tick.png') }}">
-                            <div id="detailPromo"> </div>
-                        </div>
-                    </div>
-                    <div class="policy">
-                        <div>
-                            <img src="{{ url_for('static', filename='img/chitietsanpham/box.png') }}">
-                            <p>Trong hộp có: Sạc, Tai nghe, Sách hướng dẫn, Cây lấy sim, Ốp lưng </p>
-                        </div>
-                        <div>
-                            <img src="{{ url_for('static', filename='img/chitietsanpham/icon-baohanh.png') }}">
-                            <p>Bảo hành chính hãng 12 tháng.</p>
-                        </div>
-                        <div class="last">
-                            <img src="{{ url_for('static', filename='img/chitietsanpham/1-1.jpg') }}">
-                            <p>1 đổi 1 trong 1 tháng nếu lỗi, đổi sản phẩm tại nhà trong 1 ngày.</p>
-                        </div>
-                    </div>
-                    <div class="area_order">
-                        <a class="buy_now" onclick="themVaoGioHang(maProduct, nameProduct);">
-                            <b><i class="fa fa-cart-plus"></i> Thêm vào giỏ hàng</b>
-                            <p>Giao trong 1 giờ hoặc nhận tại cửa hàng</p>
-                        </a>
+            <div class="product-detail-container">
+                <!-- Cột trái: Hình ảnh -->
+                <div class="product-gallery">
+                    <div class="picture">
+                        <img src="" onclick="opencertain()">
                     </div>
                 </div>
-                <div class="info_product">
-                    <h2>Thông số kỹ thuật</h2>
+
+                <!-- Cột phải: Thông tin -->
+                <div class="product-info-wrap">
+                    <div class="product-header">
+                        <h1>Điện thoại </h1>
+                        <div class="rating"></div>
+                    </div>
+
+                    <div class="price_sale">
+                        <div class="area_price"> </div>
+                        <div class="stock-status" style="margin-top: 10px; font-weight: bold; color: #ff8c00;">
+                            Trạng thái: <span class="detail-stock-count" data-masp="">--</span>
+                        </div>
+                        
+                        <div class="ship" style="display: none;">
+                            <img src="{{ url_for('static', filename='img/chitietsanpham/clock-152067_960_720.png') }}">
+                            <div>NHẬN HÀNG TRONG 1 GIỜ</div>
+                        </div>
+
+                        <div class="area_promo">
+                            <strong><i class="fa fa-gift"></i> Khuyến mãi trị giá đến 500.000₫</strong>
+                            <div class="promo">
+                                <img src="{{ url_for('static', filename='img/chitietsanpham/icon-tick.png') }}">
+                                <div id="detailPromo"> </div>
+                            </div>
+                        </div>
+
+                        <div class="policy">
+                            <div>
+                                <img src="{{ url_for('static', filename='img/chitietsanpham/box.png') }}">
+                                <p>Bộ sản phẩm gồm: Hộp, Sạc, Cáp, Cây lấy sim, Sách hướng dẫn.</p>
+                            </div>
+                            <div>
+                                <img src="{{ url_for('static', filename='img/chitietsanpham/icon-baohanh.png') }}">
+                                <p>Bảo hành chính hãng 12 tháng.</p>
+                            </div>
+                            <div class="last">
+                                <img src="{{ url_for('static', filename='img/chitietsanpham/1-1.jpg') }}">
+                                <p>Lỗi là đổi mới trong 30 ngày tại hơn 3000 siêu thị toàn quốc.</p>
+                            </div>
+                        </div>
+
+                        <div class="area_order">
+                            <a class="buy_now" onclick="themVaoGioHang(maProduct, nameProduct);">
+                                <b>MUA NGAY</b>
+                                <p>Giao tận nơi hoặc nhận tại cửa hàng</p>
+                            </a>
+                            <a class="buy_installment" href="javascript:void(0);">
+                                <b>MUA TRẢ GÓP 0%</b>
+                                <p>Xét duyệt nhanh qua điện thoại</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nút bấm hiển thị Thông số kỹ thuật -->
+            <div class="product-specs-button">
+                <button onclick="openSpecsModal()">
+                    <i class="fa fa-list-alt"></i> Xem cấu hình chi tiết
+                </button>
+            </div>
+
+            <!-- Modal Thông số kỹ thuật (Ẩn mặc định) -->
+            <div id="specsModal" class="specs-modal-overlay">
+                <div class="specs-modal-content info_product">
+                    <div class="specs-header">
+                        <h2>Thông số kỹ thuật</h2>
+                        <span class="close-specs" onclick="closeSpecsModal()"><i class="fa fa-times"></i></span>
+                    </div>
                     <ul class="info">
+                        <!-- JS sẽ tự động điền li vào đây -->
                     </ul>
                 </div>
             </div>
+
             <div id="overlaycertainimg" class="overlaycertainimg">
                 <div class="close" onclick="closecertain()">&times;</div>
                 <div class="overlaycertainimg-content">
@@ -101,10 +139,19 @@
         <div id="goiYSanPham"></div>
     </section>
 
+    <script>
+        function openSpecsModal() {
+            document.getElementById('specsModal').classList.add('active');
+            document.body.style.overflow = 'hidden'; 
+        }
+        function closeSpecsModal() {
+            document.getElementById('specsModal').classList.remove('active');
+            document.body.style.overflow = 'auto'; 
+        }
+    </script>
     <script>addContainTaiKhoan();</script>
 
     <div class="footer"><script>addFooter();</script></div>
 
 </body>
-
 </html>

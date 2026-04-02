@@ -1,214 +1,263 @@
+/* =============================================
+   HOME_PRODUCTS.CSS - TGDD-INSPIRED PRODUCT GRID
+   ============================================= */
+
 #khongCoSanPham {
     opacity: 0;
     width: 0;
-    color: red;
-    font-size: 30px;
-    font-weight: bold;
     height: 310px;
+    color: var(--tgdd-red);
+    font-size: 24px;
+    font-weight: 700;
 }
 
-/* Home Product */
 .homeproduct {
-    list-style-type: none;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    border-top: 1px solid var(--tgdd-border-soft);
+    border-left: 1px solid var(--tgdd-border-soft);
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
 }
 
-/* <li> trong homeproduct có class="sanpham", khai báo trong classes.js */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham {
-    width: 238px;
-    border: 1px solid #eee;
-    -webkit-transition-duration: .3s;
-    -o-transition-duration: .3s;
-    transition-duration: .3s;
-}
-
-/* Đã sửa: .sanPham -> .sanpham */
-.sanpham a {
-    display: block;
+    width: 20%;
+    min-width: 220px;
+    background: #fff;
+    border-right: 1px solid var(--tgdd-border-soft);
+    border-bottom: 1px solid var(--tgdd-border-soft);
     position: relative;
-    padding: 10px 0;
-    height: 310px;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-/* Đã sửa: .sanPham -> .sanpham */
-.sanpham a .price span {
-    display: inline-block;
-    vertical-align: middle;
-    font-size: 12px;
-    text-decoration: line-through;
-    margin-left: 5px;
-    color: #222;
+.sanpham:hover {
+    z-index: 2;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
 }
 
-/* Name and image */
-/* Hinh anh san pham */
-/* Đã sửa: .sanPham -> .sanpham và thêm object-fit */
+.sanpham a {
+    position: relative;
+    display: block;
+    height: 338px;
+    padding: 12px 12px 10px;
+}
+
 .sanpham a img {
-    display: block;
-    margin: 15px auto;
-    -webkit-transition-duration: 0.2s;
-    -o-transition-duration: 0.2s;
-    transition-duration: 0.2s;
-    width: 200px;
-    height: 200px;
-    object-fit: contain; /* Thêm vào: để ảnh không bị méo */
+    width: 180px;
+    height: 180px;
+    margin: 10px auto 14px;
+    object-fit: contain;
+    transition: transform 0.2s ease;
 }
 
-/* Di chuyen anh? len tren */
-/* Đã sửa: .sanPham -> .sanpham */
-.sanpham a:hover>img {
-    margin: 5px auto 25px;
+.sanpham:hover a > img {
+    transform: translateY(-4px);
 }
 
-/* Ten san pham */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham h3 {
-    display: block;
-    padding: 0 10px;
-    color: #333;
-    line-height: 1.3em;
-    font-size: 15px;
-    font-weight: normal;
+    min-height: 42px;
+    padding: 0 2px;
+    color: var(--tgdd-text);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
 }
 
-/* Hightlight ten san pham khi hover */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham a:hover h3 {
-    color: #288ad6;
+    color: var(--tgdd-blue);
 }
 
-/* ====== End Name and image ===== */
-
-/* Price */
-/* la div chua strong */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham .price {
     display: block;
-    padding: 5px 10px 0px 10px;
+    padding: 8px 2px 0;
 }
 
-/* strong la gia tien in dam */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham strong {
     display: inline-block;
-    vertical-align: middle;
-    overflow: hidden;
-    font-size: 14px;
-    color: #e10c00;
-    line-height: 15px;
+    color: var(--tgdd-red);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.35;
 }
 
-/* ===== End Price ===== */
-
-/* Rating */
-/* Đã sửa: .sanPham -> .sanpham */
-.sanpham .ratingresult {
-    padding: 5px 10px;
-}
-
-/* Đã sửa: .sanPham -> .sanpham */
-.sanpham .ratingresult span {
+.sanpham a .price span {
     display: inline-block;
-    /*position: relative;*/
-    top: 1px;
-    margin-left: 5px;
-    vertical-align: middle;
-    text-decoration: none;
+    margin-left: 6px;
+    color: #8a8a8a;
     font-size: 12px;
-    color: #777;
+    text-decoration: line-through;
+}
+
+.sanpham .ratingresult {
+    padding: 6px 2px 4px;
+    color: #f8b400;
+}
+
+.sanpham .ratingresult span {
+    margin-left: 5px;
+    color: var(--tgdd-text-soft);
+    font-size: 12px;
+    vertical-align: middle;
 }
 
 .fa-star,
 .fa-star-o {
-    color: orange;
+    color: #f8b400;
 }
 
-/* ===== End Rating ===== */
-
-/* Khuyen mai */
-/* label la tag khuyen mai */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham label {
-    display: inline-block;
     position: absolute;
-    top: 207px;
-    left: 10px;
-    font-size: 12px;
+    top: 14px;
+    left: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: calc(100% - 24px);
+    padding: 4px 8px;
+    border-radius: 999px;
     color: #fff;
-    font-weight: 600;
-    border-radius: 2px;
-    padding: 3px 5px 0;
-    height: 18px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    z-index: 5;
 }
 
-/* Giam gia thanh */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham label.giamgia {
-    background-image: -webkit-gradient(linear, left top, right top, from(#ff9c00), to(#ec1f1f));
-    background-image: -webkit-linear-gradient(left, #ff9c00 0%, #ec1f1f 100%);
-    background-image: -o-linear-gradient(left, #ff9c00 0%, #ec1f1f 100%);
-    background-image: linear-gradient(90deg, #ff9c00 0%, #ec1f1f 100%);
-    border-radius: 10px;
-    padding: 1px 7px;
-    padding-left: 0;
-    padding-right: 10px;
+    background: linear-gradient(135deg, #ff8a00, #d70018);
 }
 
-/* Kí tự sấm sét */
-.fa-bolt {
-    width: 20px;
-    height: 20px;
-    text-align: center;
-    line-height: 20px;
-    border-radius: 50%;
-    background: #f21;
-    color: white;
-}
-
-/* Tra gop 0% */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham label.tragop {
-    background: #f28902;
+    background: linear-gradient(135deg, #17a2b8, #0e7796);
 }
 
-/* Gia re online */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham label.giareonline {
-    background: #3fb846;
+    background: linear-gradient(135deg, #43a047, #2e7d32);
 }
 
-/* Moi ra mat */
-/* Đã sửa: .sanPham -> .sanpham */
 .sanpham label.moiramat {
-    background: #1191f8;
+    background: linear-gradient(135deg, #288ad6, #1565c0);
 }
 
-/* ===== End Khuyen mai ====== */
-
-/* ===== Them Vao Gio Hang ==== */
-/* tooltip được css bên style.css */
-.themvaogio {
-    z-index: 20;
-    border: 1px solid #e3e7eb;
+.fa-bolt {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 50%;
-    width: 1.5em;
-    height: 1.5em;
-    font-size: 1.5em;
-    color: rgb(163, 161, 161);
-    background: none;
-    transition-duration: .2s;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 9px;
+}
+
+.tooltip {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: inline-block;
+    z-index: 10;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    width: 120px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(17, 17, 17, 0.96);
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    right: 10px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(17, 17, 17, 0.96) transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+.themvaogio {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: var(--tgdd-blue);
+    color: #fff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    box-shadow: 0 10px 18px rgba(40, 138, 214, 0.22);
 }
 
 .themvaogio:hover {
-    color: black;
-    background-color: #e6e6e6;
-    box-shadow: 0px 8px 10px 0px rgba(0, 0, 0, 0.2);
+    background: var(--tgdd-blue-dark);
+    transform: scale(1.08);
 }
 
 .themvaogio:active {
-    box-shadow: none;
+    transform: scale(0.94);
 }
 
-/* ===== End Them Vao Gio Hang ==== */
-/* ====== End Home Product ======= */
+.sanpham .stock-info {
+    display: block;
+    padding: 0 2px 10px;
+    color: var(--tgdd-text-soft);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.sanpham .stock-count {
+    color: var(--tgdd-red);
+    font-weight: 700;
+}
+
+@media (max-width: 1160px) {
+    .sanpham {
+        width: 25%;
+    }
+}
+
+@media (max-width: 920px) {
+    .sanpham {
+        width: 33.3333%;
+    }
+}
+
+@media (max-width: 680px) {
+    .sanpham {
+        width: 50%;
+        min-width: 0;
+    }
+
+    .sanpham a {
+        height: 320px;
+    }
+
+    .sanpham a img {
+        width: 150px;
+        height: 150px;
+    }
+}
