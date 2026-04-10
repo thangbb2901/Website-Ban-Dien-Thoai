@@ -21,10 +21,12 @@ jobs:
       - name: Stop old containers
         run: docker compose down
         shell: powershell
+        working-directory: ./nhom12
 
       - name: Build and start services
         run: docker compose up -d --build
         shell: powershell
+        working-directory: ./nhom12
 
       - name: Show running containers
         run: docker ps
