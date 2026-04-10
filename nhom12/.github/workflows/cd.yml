@@ -1,0 +1,31 @@
+name: CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy On Local Machine
+    runs-on:
+      - self-hosted
+      - windows
+      - local
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Stop old containers
+        run: docker compose down
+        shell: powershell
+
+      - name: Build and start services
+        run: docker compose up -d --build
+        shell: powershell
+
+      - name: Show running containers
+        run: docker ps
+        shell: powershell

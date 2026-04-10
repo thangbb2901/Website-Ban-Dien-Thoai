@@ -1,0 +1,41 @@
+ĐẠI HỌC CÔNG NGHIỆP HÀ NỘI
+TRƯỜNG ĐIỆN-ĐIỆN TỬ
+	CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+
+
+PHIẾU GIAO ĐỀ TÀI ĐỒ ÁN TỐT NGHIỆP
+
+Họ tên sinh viên: Bùi Gia Thanh (Nhóm 12)	Mã SV: [Nhập mã SV]
+Lớp: [Nhập lớp]	Ngành/CTĐT: Mạng máy tính & Truyền thông dữ liệu 	Khóa: 13/17
+
+Tên đề tài: Thiết kế và triển khai hạ tầng mạng cho ứng dụng Web thương mại điện tử trên nền tảng Container: Tích hợp quy trình CI/CD và hệ thống giám sát, cảnh báo tập trung.
+
+Mục tiêu đề tài:
+1. Xây dựng ứng dụng Web thương mại điện tử (website bán điện thoại) với kiến trúc đa tầng (N-tier) và triển khai trên nền tảng Container (Docker).
+2. Thiết kế và cấu hình hạ tầng mạng có khả năng mở rộng (Scalability) và chịu tải bằng Nginx Load Balancer.
+3. Nghiên cứu và triển khai quy trình tự động hóa CI/CD nhằm tối ưu hóa việc đóng gói và triển khai ứng dụng.
+4. Thiết kế hệ thống giám sát tập trung sử dụng Prometheus, Grafana để theo dõi hiệu năng hệ thống, lưu lượng mạng và các chỉ số ứng dụng theo thời gian thực.
+5. Xây dựng bộ quy tắc cảnh báo (Alert Rules) để phát hiện và thông báo sớm các sự cố kỹ thuật qua các nền tảng truyền thông (Telegram/Email).
+6. Rèn luyện kỹ năng làm việc thực tế với các công cụ DevOps và hạ tầng mạng hiện đại.
+
+Kết quả dự kiến:
+1. Kiến trúc hạ tầng hoàn chỉnh trên Docker bao gồm: Flask App, MySQL Database, Nginx Load Balancer.
+2. Pipeline CI/CD hoàn chỉnh (GitHub Actions/Jenkins) tự động hóa các khâu Build và Deploy.
+3. Hệ thống giám sát (Prometheus & Grafana) với Dashboards trực quan hiển thị: HTTP Traffic (Request/Success/Error), System Metrics (CPU/RAM), Application Metrics (Sales/Revenue).
+4. Hệ thống cảnh báo tự động hoạt động ổn định với ít nhất 5 Alert Rules cụ thể (High Load, Server Down, Brute Force Attack).
+5. Quyển Đồ án tốt nghiệp trình bày chi tiết về kiến trúc hệ thống, quy trình triển khai và phân tích dữ liệu giám sát.
+6. Tài liệu hướng dẫn cài đặt và vận hành hệ thống.
+
+Thời gian thực hiện: 23/02/2026 đến ngày 25/04/2026 (hoặc 02/03/2026 đến 09/05/2026)
+
+
+NGƯỜI HƯỚNG DẪN
+(Ký và ghi rõ họ tên)
+
+
+
+
+ThS. Nguyễn Văn Cường	TRƯỜNG ĐIỆN – ĐIỆN TỬ
+HIỆU TRƯỞNG
+(Ký và ghi rõ họ tên)

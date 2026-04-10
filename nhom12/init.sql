@@ -59,13 +59,10 @@ CREATE TABLE orders (
     FOREIGN KEY (username) REFERENCES users (username) ON DELETE SET NULL
 );
 
--- --------------------------------------------------------
--- Cấu trúc bảng `order_items`
--- --------------------------------------------------------
 CREATE TABLE order_items (
-    order_item_id SERIAL PRIMARY KEY,
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_id TEXT NOT NULL,
-    product_masp TEXT NOT NULL,
+    product_masp TEXT, -- Đã bỏ NOT NULL để cho phép xóa sản phẩm gốc
     quantity INTEGER NOT NULL,
     price_at_purchase TEXT NOT NULL,
     product_name TEXT,

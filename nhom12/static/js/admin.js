@@ -9,6 +9,10 @@ var decrease = true; // Biến dùng cho sắp xếp bảng
 // Hàm gọi API chung với xử lý lỗi tốt hơn
 async function callAPI(endpoint, options = {}) {
     try {
+        // Đảm bảo gửi cookies (session) kèm theo request
+        if (!options.credentials) {
+            options.credentials = 'include';
+        }
         const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
         if (!response.ok) {
             let errorMessage = `Lỗi HTTP! Status: ${response.status}`;
@@ -27,6 +31,26 @@ async function callAPI(endpoint, options = {}) {
         if (typeof addAlertBox === 'function') addAlertBox(`Lỗi API: ${error.message}`, '#f55', '#fff', 5000);
         else alert(`Lỗi API: ${error.message}`);
         throw error; // Ném lỗi ra ngoài để hàm gọi có thể xử lý nếu cần
+    }
+}
+
+async function xoaDonHang(orderId) {
+    if (!orderId) {
+        addAlertBox("ID đơn hàng không hợp lệ.", '#f55', '#fff', 3000);
+        return;
+    }
+
+    if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn đơn hàng này? Thao tác này sẽ cập nhật lại doanh thu nếu đơn đã giao.`)) {
+        try {
+            await callAPI(`/orders/${orderId}`, {
+                method: 'DELETE',
+            });
+            addAlertBox(`Xóa đơn hàng thành công.`, '#17c671', '#fff', 3000);
+            await addTableDonHang(); // Tải lại bảng
+            await addThongKe();     // Cập nhật lại dashboard
+        } catch (error) {
+            // Lỗi đã được callAPI xử lý
+        }
     }
 }
 // doannhom12/static/js/admin.js
@@ -156,20 +180,28 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
                 }
             }
         },
+        animation: {
+            duration: 2000,
+            easing: 'easeOutElastic'
+        },
         scales: {
             yAxes: [{
                 ticks: {
                     beginAtZero: true,
-                    fontColor: textColor,
-                    padding: 10
+                    fontColor: '#94a3b8',
+                    padding: 10,
+                    fontSize: 12
                 },
                 gridLines: {
-                    color: "rgba(255, 255, 255, 0.1)"
+                    color: "rgba(148, 163, 184, 0.1)",
+                    zeroLineColor: "rgba(148, 163, 184, 0.2)"
                 }
             }],
             xAxes: [{
                 ticks: {
-                    fontColor: textColor
+                    fontColor: '#94a3b8',
+                    fontSize: 12,
+                    padding: 10
                 },
                 gridLines: {
                     display: false
@@ -179,16 +211,18 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
     };
 
     if (charType === 'doughnut' || charType === 'pie') {
-        options.legend.display = true; // Bật lại chú thích cho biểu đồ tròn
-        options.legend.position = 'right';
+        options.legend.display = true;
+        options.legend.position = 'bottom';
+        options.legend.labels = {
+            fontColor: '#94a3b8',
+            padding: 20,
+            usePointStyle: true
+        };
         delete options.scales;
     }
 
     if (charType === 'doughnut') {
-        options.cutoutPercentage = 60;
-    }
-    if (charType === 'pie') {
-        options.cutoutPercentage = 0;
+        options.cutoutPercentage = 75;
     }
 
     return {
@@ -200,7 +234,10 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
                 backgroundColor: backgroundColors,
                 borderColor: borderColors,
                 hoverBackgroundColor: hoverBackgroundColors,
-                borderWidth: 2
+                hoverBorderColor: '#fff',
+                hoverBorderWidth: 2,
+                borderWidth: 2,
+                weight: 1
             }]
         },
         options: options
@@ -210,30 +247,44 @@ async function addThongKe() {
     try {
         const orders = await callAPI(`/orders`);
         const products = await callAPI(`/products`);
-        let companySales = {};    // Số lượng bán ra theo hãng
-        let companyRevenue = {};  // Doanh thu theo hãng
+        const users = await callAPI(`/users`);
 
-        if (!Array.isArray(orders) || !Array.isArray(products)) {
-            console.warn("Dữ liệu đơn hàng hoặc sản phẩm không hợp lệ cho thống kê.");
-            throw new Error("Dữ liệu không hợp lệ");
+        let companySales = {};    
+        let companyRevenue = {};  
+        let totalRevenue = 0;
+        let totalItemsSold = 0;
+
+        if (Array.isArray(orders) && Array.isArray(products)) {
+            orders.forEach(order => {
+                // CHỈ THỐNG KÊ DOANH THU CHO CÁC ĐƠN ĐÃ GIAO HÀNG
+                if (order.status === 'Đã giao hàng' && Array.isArray(order.products)) {
+                    order.products.forEach(item => {
+                        const product = products.find(p => p && p.masp === item.product_masp);
+                        if (product) {
+                            const company = product.company || 'Khác';
+                            const qty = Number(item.quantity) || 0;
+                            const price = item.price_at_purchase ? stringToNum(item.price_at_purchase.toString()) : 0;
+                            
+                            companySales[company] = (companySales[company] || 0) + qty;
+                            companyRevenue[company] = (companyRevenue[company] || 0) + (price * qty);
+                            
+                            totalRevenue += (price * qty);
+                            totalItemsSold += qty;
+                        }
+                    });
+                }
+            });
         }
 
-        orders.forEach(order => {
-            // Chỉ tính những đơn hàng đã giao thành công
-            if (order.status && order.status.toLowerCase() === 'đã giao hàng' && Array.isArray(order.products)) {
-                order.products.forEach(item => {
-                    const product = products.find(p => p && p.masp === item.product_masp);
-                    if (product) {
-                        const company = product.company || 'Khác';
-                        companySales[company] = (companySales[company] || 0) + (Number(item.quantity) || 0);
-
-                        // Sử dụng giá lúc mua hàng (price_at_purchase) để tính doanh thu
-                        const priceAtPurchase = item.price_at_purchase ? stringToNum(item.price_at_purchase.toString()) : 0;
-                        companyRevenue[company] = (companyRevenue[company] || 0) + (priceAtPurchase * (Number(item.quantity) || 0));
-                    }
-                });
-            }
-        });
+        // Cập nhật số liệu lên giao diện
+        if(document.getElementById('stat-total-revenue')) 
+            document.getElementById('stat-total-revenue').innerText = numToString(totalRevenue) + ' ₫';
+        if(document.getElementById('stat-total-orders')) 
+            document.getElementById('stat-total-orders').innerText = orders.length;
+        if(document.getElementById('stat-total-products')) 
+            document.getElementById('stat-total-products').innerText = products.length;
+        if(document.getElementById('stat-total-users')) 
+            document.getElementById('stat-total-users').innerText = users ? users.length : 0;
 
         const companies = Object.keys(companySales).length > 0 ? Object.keys(companySales) : ['Không có dữ liệu'];
         const salesData = Object.keys(companySales).length > 0 ? Object.values(companySales) : [0];
@@ -243,9 +294,7 @@ async function addThongKe() {
         addChart('myChart1', createChartConfig('Số lượng bán ra theo hãng', 'bar', companies, salesData, colors));
         addChart('myChart2', createChartConfig('Doanh thu theo hãng', 'doughnut', companies, revenueData, colors));
     } catch (error) {
-        console.error("Lỗi khi tải dữ liệu thống kê:", error);
-        addChart('myChart1', createChartConfig('Số lượng bán ra (Lỗi tải dữ liệu)', 'bar', ['Lỗi'], [0], ['#ccc']));
-        addChart('myChart2', createChartConfig('Doanh thu (Lỗi tải dữ liệu)', 'doughnut', ['Lỗi'], [0], ['#ccc']));
+        console.error("Lỗi thống kê:", error);
     }
 }
 
@@ -1104,6 +1153,10 @@ async function addTableDonHang() {
                     <div class="tooltip" style="display:inline-block; margin-right: 5px;">
                         <i class="fa fa-pencil" style="color: #ffc107; cursor:pointer;" onclick="addKhungSuaDonHang('${dh.order_id}')"></i>
                         <span class="tooltiptext">Sửa</span>
+                    </div>
+                    <div class="tooltip" style="display:inline-block; margin-right: 5px;">
+                        <i class="fa fa-trash" style="color: #dc3545; cursor:pointer;" onclick="xoaDonHang('${dh.order_id}')"></i>
+                        <span class="tooltiptext">Xóa đơn</span>
                     </div>`;
 
             const statusActions = {

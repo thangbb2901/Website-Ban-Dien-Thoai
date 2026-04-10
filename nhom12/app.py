@@ -18,8 +18,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Ngay dưới dòng `from flask import ...`
 from flask import session, redirect, url_for, flash
 import datetime
-import psycopg2
 import secrets # Thư viện để tạo khóa bí mật
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+import time
 from model import (
     get_db_connection,
     product_row_to_dict, user_row_to_dict, order_row_to_dict, banner_row_to_dict,
@@ -30,14 +31,106 @@ from model import (
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# ============ PROMETHEUS METRICS ============
+# Đếm số lượng request theo endpoint
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+# Đo thời gian xử lý request (latency)
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request latency in seconds',
+    ['method', 'endpoint']
+)
+
+# Đếm số lần đăng nhập thành công/thất bại
+login_attempts = Counter(
+    'login_attempts_total',
+    'Total login attempts',
+    ['result']  # 'success', 'failed', 'banned'
+)
+
+# Đếm số lượng tấn công (failed login > 3 lần)
+security_events = Counter(
+    'security_events_total',
+    'Security events (attacks, suspicious activities)',
+    ['event_type']  # 'failed_login', 'banned_account', 'invalid_request'
+)
+
+# Đếm người dùng trực tuyến hiện tại
+active_users = Gauge(
+    'active_users_current',
+    'Current number of active users'
+)
+
+# Đếm số đơn hàng được tạo (Chuyển sang Gauge để đồng bộ DB)
+orders_created = Gauge(
+    'orders_created_total',
+    'Total orders created'
+)
+
+# Đếm số lượng sản phẩm bán được (Chuyển sang Gauge để đồng bộ DB)
+products_sold = Gauge(
+    'products_sold_total',
+    'Total products sold',
+    ['product_name', 'company']
+)
+
+# Tổng doanh thu (Gauge)
+revenue_total = Gauge(
+    'revenue_total_vnd',
+    'Total revenue in VND'
+)
+
 app = Flask(__name__, template_folder='templates', static_folder='static')
 socketio = SocketIO(app)
+
+# ============ MIDDLEWARE TRACKING ============
+@app.before_request
+def track_request_start():
+    """Ghi lại thời gian bắt đầu request."""
+    request._start_time = time.time()
+
+@app.after_request
+def track_request_end(response):
+    """Ghi lại metrics cho request."""
+    if hasattr(request, '_start_time'):
+        duration = time.time() - request._start_time
+        endpoint = request.endpoint or 'unknown'
+        method = request.method
+        status = response.status_code
+        
+        # Không track /metrics endpoint để tránh vòng lặp
+        if endpoint != 'metrics_api':
+            http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
+            http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
+    return response
+
+# ============ METRICS ENDPOINT ============
+@app.route('/metrics', methods=['GET'])
+def metrics_api():
+    """Prometheus metrics endpoint."""
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # SỬA ĐỔI: Lấy chuỗi kết nối từ biến môi trường, fallback về SQLite nếu không có
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///database.db')
 
 # Cố định SECRET_KEY để hỗ trợ chạy nhiều replicas (Load Balancing)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'phone_store_secret_key_123')
+
+# ============ TEST ENDPOINT ============
+@app.route('/api/test-session', methods=['GET'])
+def test_session():
+    """Endpoint để test xem session có hoạt động không."""
+    return jsonify({
+        "username": session.get('username'),
+        "is_admin": session.get('is_admin'),
+        "all_session_data": dict(session)
+    }), 200
+
 # Đường dẫn đến thư mục lưu banner
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 BANNER_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'img', 'banners')
@@ -53,6 +146,46 @@ if not os.path.exists(BANNER_UPLOAD_FOLDER):
 def allowed_file(filename):
     """Kiểm tra định dạng file ảnh có được phép."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.before_request
+def check_user_banned():
+    """Kiểm tra trạng thái khóa tài khoản trước mỗi request.
+    Nếu phát hiện bị khóa, xóa session và yêu cầu frontend xóa localStorage."""
+    username = session.get('username')
+    if not username:
+        return
+
+    # Bỏ qua các file tĩnh và API đăng nhập/đăng ký
+    if request.path.startswith('/static/') or request.endpoint in {'login_api', 'add_user_api', 'static'}:
+        return
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT off FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            # Ép kiểu về số nguyên để tránh lỗi so sánh (ví dụ DB trả về chuỗi "1")
+            is_banned = int(row['off'])
+            
+            if is_banned == 1:
+                logging.warning(f"SYSTEM: Phát hiện người dùng bị khóa: {username}")
+                session.clear()
+
+                if request.path.startswith('/api/'):
+                    return jsonify({"error": "Tài khoản bị khóa. Vui lòng liên hệ Admin."}), 403
+
+                return f"""
+                    <script>
+                        localStorage.removeItem('CurrentUser');
+                        alert('Tài khoản của bạn ( {username} ) đã bị khóa!');
+                        window.location.href = "/";
+                    </script>
+                """, 200
+    except Exception as e:
+        logging.error(f"Lỗi trong check_user_banned: {e}")
 
 def is_admin_session():
     return bool(session.get('is_admin'))
@@ -557,9 +690,17 @@ def delete_product_api(masp):
         if not cursor.fetchone():
             return jsonify({"error": "Sản phẩm không tìm thấy"}), 404
 
+        # 1. Tạm tắt kiểm tra khóa ngoại (SQLite)
+        cursor.execute("PRAGMA foreign_keys = OFF")
+        
+        # 2. Thực hiện xóa sản phẩm (Bỏ qua cập nhật order_items để tránh lỗi NOT NULL)
         cursor.execute("DELETE FROM products WHERE masp = ?", (masp,))
+        
+        # 3. Bật lại kiểm tra khóa ngoại
+        cursor.execute("PRAGMA foreign_keys = ON")
+        
         conn.commit()
-        logging.info(f"API: Đã xóa sản phẩm (masp: {masp})")
+        logging.info(f"API: Đã xóa sản phẩm '{masp}' thành công.")
         return jsonify({"message": "Xóa sản phẩm thành công"}), 200
     except Exception as e:
         conn.rollback()
@@ -795,6 +936,7 @@ def login_api():
     """Xử lý đăng nhập người dùng và admin."""
     data = request.json
     if not data or 'username' not in data or 'pass' not in data:
+        security_events.labels(event_type='invalid_request').inc()
         return jsonify({"error": "Thiếu thông tin đăng nhập"}), 400
 
     username = data['username'].strip()
@@ -806,8 +948,12 @@ def login_api():
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user_row = cursor.fetchone()
         if not user_row:
+            login_attempts.labels(result='failed').inc()
+            security_events.labels(event_type='failed_login').inc()
             return jsonify({"error": "Tên đăng nhập không tồn tại."}), 404
         if not password_matches(user_row['pass'], password):
+            login_attempts.labels(result='failed').inc()
+            security_events.labels(event_type='failed_login').inc()
             return jsonify({"error": "Mật khẩu không đúng."}), 401
         if not is_password_hash_value(user_row['pass']):
             hashed_password = generate_password_hash(password)
@@ -816,9 +962,15 @@ def login_api():
             cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
             user_row = cursor.fetchone()
         if user_row['off']: # Nếu cột 'off' là 1 (True)
+            login_attempts.labels(result='banned').inc()
+            security_events.labels(event_type='banned_account').inc()
             return jsonify({"error": "Tài khoản này đã bị khóa."}), 403 # 403 Forbidden
         session['is_admin'] = bool(user_row['perm'])
         session['username'] = user_row['username']
+        
+        # Track login thành công
+        login_attempts.labels(result='success').inc()
+        active_users.set(len(session))
 
         logging.info(f"API: Người dùng '{username}' đăng nhập thành công.")
         response_payload = user_row_to_dict(user_row)
@@ -958,6 +1110,10 @@ def create_order_api():
         cursor.execute("SELECT * FROM order_items WHERE order_id = ?", (order_id,))
         new_items_rows = cursor.fetchall()
 
+        # ====== TRACK METRICS (Sửa lỗi cộng dồn) ======
+        orders_created.inc()  # Tăng số đơn hàng lên 1 đơn mới
+        # KHÔNG tự động cộng doanh thu ở đây nữa mà để cập nhật khi Admin ấn 'Đã giao'
+
         logging.info(f"API: Đã tạo đơn hàng '{order_id}' cho người dùng '{username}' với tổng tiền {total_amount_calculated}")
         return jsonify(order_row_to_dict(new_order_row, new_items_rows)), 201
 
@@ -989,18 +1145,49 @@ def update_order_status_api(order_id):
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
-        if not cursor.fetchone():
+        order = cursor.fetchone()
+        if not order:
             return jsonify({"error": "Đơn hàng không tìm thấy"}), 404
 
-        cursor.execute("UPDATE orders SET status = ? WHERE order_id = ?", (data['status'], order_id))
-        conn.commit()
+        old_status = order['status']
+        new_status = data['status']
+
+        if old_status != new_status:
+            # 1. Cập nhật trạng thái trong DB
+            cursor.execute("UPDATE orders SET status = ? WHERE order_id = ?", (new_status, order_id))
+            
+            # 2. Xử lý Metrics Doanh thu và Sản phẩm bán được
+            # Trường hợp 1: Chuyển SANG 'Đã giao hàng' (Cộng thêm)
+            if new_status == 'Đã giao hàng' and old_status != 'Đã giao hàng':
+                revenue_total.inc(order['total_amount'])
+                # Lấy danh sách item để cộng vào products_sold metric
+                cursor.execute("SELECT product_masp, quantity, product_name FROM order_items WHERE order_id = ?", (order_id,))
+                items = cursor.fetchall()
+                for item in items:
+                    cursor.execute("SELECT company FROM products WHERE masp = ?", (item['product_masp'],))
+                    p_info = cursor.fetchone()
+                    company = p_info['company'] if p_info else 'Unknown'
+                    products_sold.labels(product_name=item['product_name'], company=company).inc(item['quantity'])
+            
+            # Trường hợp 2: Chuyển TỪ 'Đã giao hàng' sang trạng thái khác (Trừ đi)
+            elif old_status == 'Đã giao hàng' and new_status != 'Đã giao hàng':
+                revenue_total.dec(order['total_amount'])
+                cursor.execute("SELECT product_masp, quantity, product_name FROM order_items WHERE order_id = ?", (order_id,))
+                items = cursor.fetchall()
+                for item in items:
+                    cursor.execute("SELECT company FROM products WHERE masp = ?", (item['product_masp'],))
+                    p_info = cursor.fetchone()
+                    company = p_info['company'] if p_info else 'Unknown'
+                    products_sold.labels(product_name=item['product_name'], company=company).dec(item['quantity'])
+
+            conn.commit()
 
         cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
         updated_order_row = cursor.fetchone()
         cursor.execute("SELECT * FROM order_items WHERE order_id = ?", (order_id,))
         items_rows = cursor.fetchall()
 
-        logging.info(f"API: Đã cập nhật trạng thái đơn hàng '{order_id}' thành '{data['status']}'")
+        logging.info(f"API: Đã cập nhật trạng thái đơn hàng '{order_id}' từ '{old_status}' thành '{new_status}'")
         return jsonify(order_row_to_dict(updated_order_row, items_rows))
     except sqlite3.Error as e:
         conn.rollback()
@@ -1096,6 +1283,49 @@ def update_full_order_api(order_id):
         conn.rollback()
         logging.error(f"API Lỗi không xác định khi cập nhật đơn hàng {order_id}: {str(e_gen)}")
         return jsonify({"error": f"Lỗi máy chủ không xác định: {str(e_gen)}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/orders/<string:order_id>', methods=['DELETE'])
+@require_admin_api
+def delete_order_api(order_id):
+    """Xóa vĩnh viễn đơn hàng và cập nhật lại metrics."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Lấy thông tin đơn hàng trước khi xóa để xử lý metrics
+        cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+        order = cursor.fetchone()
+        if not order:
+            return jsonify({"error": "Đơn hàng không tìm thấy"}), 404
+
+        # Nếu đơn đã giao thì phải trừ đi doanh thu và sản phẩm đã bán khi xóa
+        if order['status'] == 'Đã giao hàng':
+            revenue_total.dec(order['total_amount'])
+            
+            # Trừ số lượng từng sản phẩm bán được một cách an toàn
+            cursor.execute("""
+                SELECT oi.product_name, oi.quantity, p.company
+                FROM order_items oi 
+                LEFT JOIN products p ON oi.product_masp = p.masp 
+                WHERE oi.order_id = ?
+            """, (order_id,))
+            items = cursor.fetchall()
+            for item in items:
+                comp = item[2] if item[2] else 'Unknown'
+                products_sold.labels(product_name=item[0], company=comp).dec(item[1])
+
+        # Thực hiện xóa (ON DELETE CASCADE sẽ tự động xóa order_items)
+        cursor.execute("DELETE FROM orders WHERE order_id = ?", (order_id,))
+        conn.commit()
+        
+        logging.info(f"API: Admin đã xóa đơn hàng '{order_id}'")
+        return jsonify({"message": "Xóa đơn hàng thành công"}), 200
+    except Exception as e:
+        conn.rollback()
+        logging.error(f"API Lỗi khi xóa đơn hàng {order_id}: {e}")
+        return jsonify({"error": "Lỗi hệ thống khi xóa đơn hàng"}), 500
     finally:
         if conn:
             conn.close()
@@ -1463,6 +1693,51 @@ def migrate_database():
         if conn:
             conn.close()
 
+def init_metrics_from_db():
+    """Đồng bộ hóa dữ liệu từ Database vào Prometheus Metrics khi khởi động."""
+    logging.info("Bắt đầu đồng bộ metrics từ Database...")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 1. Tổng doanh thu (Chỉ tính những đơn 'Đã giao hàng')
+        cursor.execute("SELECT SUM(total_amount) FROM orders WHERE status = 'Đã giao hàng'")
+        row = cursor.fetchone()
+        if row and row[0]:
+            revenue_total.set(float(row[0]))
+        else:
+            revenue_total.set(0)
+
+        # 2. Tổng số đơn hàng
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        row = cursor.fetchone()
+        if row and row[0]:
+            orders_created.set(float(row[0]))
+
+        # 3. Sản phẩm bán chạy
+        try:
+            cursor.execute("""
+                SELECT p.name, p.company, SUM(oi.quantity) 
+                FROM order_items oi 
+                JOIN products p ON oi.product_masp = p.masp 
+                JOIN orders o ON oi.order_id = o.order_id
+                WHERE o.status = 'Đã giao hàng'
+                GROUP BY p.masp
+            """)
+            sold_rows = cursor.fetchall()
+            for r in sold_rows:
+                products_sold.labels(product_name=r[0], company=r[1]).set(float(r[2]))
+        except Exception as e_metric:
+            logging.warning(f"Bỏ qua đồng bộ sản phẩm bán được: {e_metric}")
+
+        logging.info("Hoàn tất đồng bộ metrics từ Database.")
+    except Exception as e:
+        logging.error(f"Lỗi khi đồng bộ metrics: {e}")
+    finally:
+        if conn:
+            conn.close()
+
 def initialize_database():
     """Khởi tạo cơ sở dữ liệu và nhập dữ liệu ban đầu."""
     logging.info("Bắt đầu quá trình khởi tạo cơ sở dữ liệu...")
@@ -1498,6 +1773,7 @@ def initialize_database():
             conn.close()
         
     migrate_database() # Tự động sửa lỗi thiếu cột
+    init_metrics_from_db() # ĐỒNG BỘ METRICS TỪ DB
     logging.info("Hoàn tất khởi tạo cơ sở dữ liệu.")
 
 # Tự động khởi tạo CSDL khi chạy bằng Docker (Gunicorn/Flask run)

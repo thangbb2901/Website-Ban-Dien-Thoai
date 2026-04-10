@@ -337,6 +337,7 @@ async function signUp(form) {
         const response = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(newUser)
         });
 
@@ -374,6 +375,7 @@ function logIn(form) {
     fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, pass })
     })
         .then(async response => {
@@ -1212,6 +1214,7 @@ async function handleForgotPassword_Step1(form) {
         const response = await fetch('/api/password-reset/request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ email: email })
         });
         const data = await response.json();
@@ -1272,6 +1275,7 @@ async function handleOTPVerification_Step2(form, emailForDisplay) {
         const response = await fetch('/api/password-reset/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ email: emailForDisplay, otp: otpInput })
         });
         const data = await response.json();
@@ -1343,6 +1347,7 @@ async function handleSetNewPassword_Step3(form) {
         const response = await fetch('/api/password-reset/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ pass: newPassword })
         });
 

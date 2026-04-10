@@ -16,7 +16,7 @@ services:
       replicas: 3
     environment:
       - FLASK_ENV=development
-      - FLASK_SECRET_KEY=nhom12_secret_key_fixed_2024
+      - FLASK_SECRET_KEY=nhom12_secret_key_fixed_2024_secure
     volumes:
       - .:/app
     networks:
@@ -53,9 +53,29 @@ services:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx_exporter
     command:
-      - -nginx.scrape-uri
-      - http://nginx:80/stub_status
+      - --nginx.scrape-uri
+      - http://nginx_proxy:80/stub_status
     restart: always
+    depends_on:
+      - nginx
+    networks:
+      - frontend-network
+
+  # [Monitoring] System metrics exporter (CPU, Memory, Disk)
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: always
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
     networks:
       - frontend-network
 
@@ -63,12 +83,22 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus_monitor
+    ports:
+      - "9090:9090" # Mở cổng để gỡ lỗi tại localhost:9090
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     restart: always
+    depends_on:
+      web:
+        condition: service_started
+      node_exporter:
+        condition: service_started
+      nginx_exporter:
+        condition: service_started
     networks:
       - frontend-network
+      - backend-network
 
   # [Monitoring] Bảng giám sát đồ thị trực quan (Dashboard)
   grafana:
@@ -93,4 +123,4 @@ networks:
 volumes:
   grafana_data:
   prometheus_data:
-
+
