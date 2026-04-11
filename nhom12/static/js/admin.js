@@ -253,24 +253,24 @@ async function addThongKe() {
         let companyRevenue = {};  
         let totalRevenue = 0;
         let totalItemsSold = 0;
+        let completedOrders = 0;
 
         if (Array.isArray(orders) && Array.isArray(products)) {
             orders.forEach(order => {
                 // CHỈ THỐNG KÊ DOANH THU CHO CÁC ĐƠN ĐÃ GIAO HÀNG
                 if (order.status === 'Đã giao hàng' && Array.isArray(order.products)) {
+                    completedOrders += 1;
+                    totalRevenue += Number(order.total_amount) || 0;
+
                     order.products.forEach(item => {
                         const product = products.find(p => p && p.masp === item.product_masp);
-                        if (product) {
-                            const company = product.company || 'Khác';
-                            const qty = Number(item.quantity) || 0;
-                            const price = item.price_at_purchase ? stringToNum(item.price_at_purchase.toString()) : 0;
-                            
-                            companySales[company] = (companySales[company] || 0) + qty;
-                            companyRevenue[company] = (companyRevenue[company] || 0) + (price * qty);
-                            
-                            totalRevenue += (price * qty);
-                            totalItemsSold += qty;
-                        }
+                        const company = product?.company || 'Không xác định';
+                        const qty = Number(item.quantity) || 0;
+                        const price = item.price_at_purchase ? stringToNum(item.price_at_purchase.toString()) : 0;
+
+                        companySales[company] = (companySales[company] || 0) + qty;
+                        companyRevenue[company] = (companyRevenue[company] || 0) + (price * qty);
+                        totalItemsSold += qty;
                     });
                 }
             });
@@ -280,7 +280,7 @@ async function addThongKe() {
         if(document.getElementById('stat-total-revenue')) 
             document.getElementById('stat-total-revenue').innerText = numToString(totalRevenue) + ' ₫';
         if(document.getElementById('stat-total-orders')) 
-            document.getElementById('stat-total-orders').innerText = orders.length;
+            document.getElementById('stat-total-orders').innerText = completedOrders;
         if(document.getElementById('stat-total-products')) 
             document.getElementById('stat-total-products').innerText = products.length;
         if(document.getElementById('stat-total-users')) 

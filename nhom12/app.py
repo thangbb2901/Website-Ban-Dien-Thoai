@@ -113,6 +113,8 @@ def track_request_end(response):
 @app.route('/metrics', methods=['GET'])
 def metrics_api():
     """Prometheus metrics endpoint."""
+    # Keep DB-derived business gauges in sync across all replicas before scrape.
+    init_metrics_from_db()
     return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # SỬA ĐỔI: Lấy chuỗi kết nối từ biến môi trường, fallback về SQLite nếu không có
