@@ -1,0 +1,32 @@
+groups:
+  - name: nhom12-alerts
+    rules:
+      - alert: WebServerDown
+        expr: up{job="flask_app"} == 0
+        for: 20s
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Flask web app is down"
+          description: "Prometheus cannot scrape the Flask app target {{ $labels.instance }} for 2 minutes."
+
+      - alert: NginxExporterDown
+        expr: up{job="nginx_exporter"} == 0
+        for: 20s
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Nginx exporter is down"
+          description: "Prometheus cannot scrape the Nginx exporter target {{ $labels.instance }} for 2 minutes."
+
+      - alert: HighCPUUsage
+        expr: (100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 30s
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% for more than 5 minutes."

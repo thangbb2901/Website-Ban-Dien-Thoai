@@ -1,0 +1,25 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'severity', 'team']
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 2h
+  receiver: telegram
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - send_resolved: true
+        bot_token: '8720103279:AAFd7JAGxruYD-eGZ5oPp6lxbGD6cwL6oKk'
+        chat_id: 1162679575
+        api_url: 'https://api.telegram.org'
+        parse_mode: 'HTML'
+        message: |-
+          {{ range .Alerts }}
+          <b>{{ .Annotations.summary }}</b>
+          {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Alert: {{ .Labels.alertname }}
+          {{ end }}

@@ -26,7 +26,6 @@ services:
   # Dịch vụ Reverse Proxy (Nginx) - LOAD BALANCER & GATEWAY
   nginx:
     image: nginx:latest
-    container_name: nginx_proxy
     restart: always
     ports:
       # Hứng yêu cầu HTTP thuần từ mạng Internet
@@ -51,10 +50,9 @@ services:
   # [Monitoring] Bộ dò quét biến đổi mạng lưới Web
   nginx_exporter:
     image: nginx/nginx-prometheus-exporter:latest
-    container_name: nginx_exporter
     command:
       - --nginx.scrape-uri
-      - http://nginx_proxy:80/stub_status
+      - http://nginx:80/stub_status
     restart: always
     depends_on:
       - nginx
@@ -64,7 +62,6 @@ services:
   # [Monitoring] System metrics exporter (CPU, Memory, Disk)
   node_exporter:
     image: prom/node-exporter:latest
-    container_name: node_exporter
     restart: always
     ports:
       - "9100:9100"
@@ -82,11 +79,11 @@ services:
   # [Monitoring] Thu thập và tổng hợp chỉ số băng thông
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus_monitor
     ports:
       - "9090:9090" # Mở cổng để gỡ lỗi tại localhost:9090
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert-rules.yml:/etc/prometheus/alert-rules.yml
       - prometheus_data:/prometheus
     restart: always
     depends_on:
@@ -96,6 +93,23 @@ services:
         condition: service_started
       nginx_exporter:
         condition: service_started
+      alertmanager:
+        condition: service_started
+    networks:
+      - frontend-network
+      - backend-network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9094:9093"
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    restart: always
     networks:
       - frontend-network
       - backend-network
@@ -103,11 +117,17 @@ services:
   # [Monitoring] Bảng giám sát đồ thị trực quan (Dashboard)
   grafana:
     image: grafana/grafana:latest
-    container_name: grafana_dashboard
     ports:
       - "3000:3000" # Truy cập: http://localhost:3000
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../grafana/provisioning:/etc/grafana/provisioning
+      - ../grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     restart: always
     networks:
       - frontend-network
@@ -123,4 +143,5 @@ networks:
 volumes:
   grafana_data:
   prometheus_data:
+  alertmanager_data:
 
