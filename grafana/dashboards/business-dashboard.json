@@ -1,0 +1,63 @@
+{
+  "uid": "nhom12-business",
+  "title": "Business Dashboard - Nhom 12",
+  "tags": ["business", "nhom12", "sales"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "15s",
+  "editable": true,
+  "graphTooltip": 1,
+  "style": "dark",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Orders",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [{"expr": "orders_created_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Total Revenue",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [{"expr": "revenue_total_vnd", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "currencyVND", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Products Sold",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "targets": [{"expr": "sum(products_sold_total)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Load",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total[5m]))", "legendFormat": "requests/sec", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "Successful vs Failed Requests",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum by (status) (rate(http_requests_total[5m]))", "legendFormat": "{{status}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "bargauge",
+      "title": "Best Selling Products",
+      "gridPos": {"x": 0, "y": 12, "w": 24, "h": 8},
+      "targets": [
+        {"expr": "topk(10, sum by (product_name, company) (products_sold_total))", "legendFormat": "{{company}} - {{product_name}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []},
+      "options": {"orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true}
+    }
+  ]
+}

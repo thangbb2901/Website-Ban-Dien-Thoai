@@ -1,0 +1,48 @@
+{
+  "uid": "nhom12-nginx",
+  "title": "Nginx Monitoring",
+  "tags": ["nginx", "proxy", "website"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "15s",
+  "editable": true,
+  "graphTooltip": 1,
+  "style": "dark",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Nginx Up",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [{"expr": "nginx_up", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Exporter Version",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [{"expr": "nginx_exporter_build_info", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Requests",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total[5m]))", "legendFormat": "requests", "refId": "A"},
+        {"expr": "sum(rate(http_requests_total{status=~\"2..\"}[5m]))", "legendFormat": "success", "refId": "B"},
+        {"expr": "sum(rate(http_requests_total{status=~\"4..|5..\"}[5m]))", "legendFormat": "error", "refId": "C"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Latency",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3}, "overrides": []}
+    }
+  ]
+}

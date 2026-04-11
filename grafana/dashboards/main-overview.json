@@ -1,0 +1,107 @@
+{
+  "uid": "nhom12-main-overview",
+  "title": "Main Overview - Nhom 12",
+  "tags": ["overview", "prometheus", "website"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "editable": true,
+  "graphTooltip": 1,
+  "style": "dark",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requests / 5m",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total[5m]))", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Success / 5m",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{status=~\"2..\"}[5m]))", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Error / 5m",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{status=~\"4..|5..\"}[5m]))", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate %",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "100 * sum(rate(http_requests_total{status=~\"4..|5..\"}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1)", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Traffic",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(http_requests_total[5m]))", "legendFormat": "all", "refId": "A"},
+        {"expr": "sum(rate(http_requests_total{status=~\"2..\"}[5m]))", "legendFormat": "success", "refId": "B"},
+        {"expr": "sum(rate(http_requests_total{status=~\"4..|5..\"}[5m]))", "legendFormat": "error", "refId": "C"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p95",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Active Users",
+      "gridPos": {"x": 0, "y": 12, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "active_users_current", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Orders Created",
+      "gridPos": {"x": 6, "y": 12, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "orders_created_total", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Revenue",
+      "gridPos": {"x": 12, "y": 12, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "revenue_total_vnd", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "currencyVND", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "bargauge",
+      "title": "Top Sold Products",
+      "gridPos": {"x": 0, "y": 16, "w": 24, "h": 8},
+      "targets": [
+        {"expr": "topk(10, sum by (product_name, company) (products_sold_total))", "legendFormat": "{{company}} - {{product_name}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []},
+      "options": {"orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true}
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "uid": "nhom12-system",
+  "title": "System Monitoring Dashboard",
+  "tags": ["cpu", "memory", "system"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "editable": true,
+  "graphTooltip": 1,
+  "style": "dark",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "CPU Usage %",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Memory Used %",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Load 1m",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "targets": [{"expr": "node_load1", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 2}, "overrides": []}
+    },
+    {
+      "type": "stat",
+      "title": "Uptime",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "expr": "time() - node_boot_time_seconds",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 0}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage by Mode",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum by (mode) (rate(node_cpu_seconds_total[5m]))", "legendFormat": "{{mode}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 3}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "Network Throughput",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(node_network_receive_bytes_total[5m]))", "legendFormat": "rx", "refId": "A"},
+        {"expr": "sum(rate(node_network_transmit_bytes_total[5m]))", "legendFormat": "tx", "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "Bps", "decimals": 1}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "Disk Read/Write",
+      "gridPos": {"x": 0, "y": 12, "w": 24, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(node_disk_read_bytes_total[5m]))", "legendFormat": "read", "refId": "A"},
+        {"expr": "sum(rate(node_disk_written_bytes_total[5m]))", "legendFormat": "write", "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "Bps", "decimals": 1}, "overrides": []}
+    }
+  ]
+}
