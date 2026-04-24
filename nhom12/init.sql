@@ -76,12 +76,13 @@ CREATE TABLE order_items (
 -- --------------------------------------------------------
 CREATE TABLE banners (
     banner_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    filename TEXT NOT NULL UNIQUE,
+    filename VARCHAR(255) NOT NULL UNIQUE,
     alt_text TEXT,
     link_url TEXT,
     is_active INTEGER DEFAULT 1,
     display_order INTEGER DEFAULT 0,
-    uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    banner_type VARCHAR(20) DEFAULT 'hero'
 );
 
 -- --------------------------------------------------------

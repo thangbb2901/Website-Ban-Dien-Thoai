@@ -1653,6 +1653,112 @@ def internal_server_error(e):
     return jsonify(error="Lỗi máy chủ nội bộ. Vui lòng thử lại sau."), 500
 
 # --- Khởi tạo ứng dụng và CSDL ---
+def ensure_base_schema(cursor):
+    """Tạo đủ các bảng cơ bản nếu DB hiện tại còn thiếu schema."""
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            masp VARCHAR(50) PRIMARY KEY,
+            name TEXT NOT NULL,
+            company TEXT,
+            img TEXT,
+            price TEXT,
+            star INTEGER,
+            rateCount INTEGER,
+            promo_name TEXT,
+            promo_value TEXT,
+            detail_screen TEXT,
+            detail_os TEXT,
+            detail_camara TEXT,
+            detail_camaraFront TEXT,
+            detail_cpu TEXT,
+            detail_ram TEXT,
+            detail_rom TEXT,
+            detail_microUSB TEXT,
+            detail_memoryStick TEXT,
+            detail_sim TEXT,
+            detail_battery TEXT,
+            quantity INTEGER DEFAULT 50
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username VARCHAR(50) PRIMARY KEY,
+            pass TEXT NOT NULL,
+            ho TEXT,
+            ten TEXT,
+            email VARCHAR(255) UNIQUE,
+            products TEXT,
+            off INTEGER DEFAULT 0,
+            perm INTEGER DEFAULT 0,
+            address TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            order_id VARCHAR(64) PRIMARY KEY,
+            username VARCHAR(50),
+            order_date TEXT NOT NULL,
+            total_amount REAL,
+            status TEXT NOT NULL,
+            shipping_info TEXT,
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE SET NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS order_items (
+            order_item_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            order_id VARCHAR(64) NOT NULL,
+            product_masp VARCHAR(50),
+            quantity INTEGER NOT NULL,
+            price_at_purchase TEXT NOT NULL,
+            product_name TEXT,
+            FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
+            FOREIGN KEY (product_masp) REFERENCES products (masp) ON DELETE SET NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS banners (
+            banner_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            filename VARCHAR(255) NOT NULL UNIQUE,
+            alt_text TEXT,
+            link_url TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            banner_type VARCHAR(20) DEFAULT 'hero'
+        )
+    """)
+
+
+def seed_initial_data(cursor):
+    """Nạp dữ liệu mẫu từ init.sql theo kiểu idempotent."""
+    init_sql_path = os.path.join(BASE_DIR, 'init.sql')
+    if not os.path.exists(init_sql_path):
+        return
+
+    with open(init_sql_path, 'r', encoding='utf-8') as f:
+        sql_script = f.read()
+
+    statements = []
+    for raw_stmt in sql_script.split(';'):
+        stmt = raw_stmt.strip()
+        if not stmt:
+            continue
+        upper_stmt = stmt.lstrip().upper()
+        if not upper_stmt.startswith('INSERT INTO'):
+            continue
+        stmt = re.sub(r'^INSERT INTO\s+"?(\w+)"?', r'INSERT IGNORE INTO \1', stmt, flags=re.IGNORECASE)
+        stmt = stmt.replace('INSERT IGNORE INTO products VALUES', 'INSERT IGNORE INTO products VALUES')
+        statements.append(stmt)
+
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+    try:
+        for stmt in statements:
+            cursor.execute(stmt)
+    finally:
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+
+
 def migrate_database():
     """Tự động cập nhật cấu trúc CSDL nếu thiếu cột."""
     conn = None
@@ -1746,42 +1852,18 @@ def initialize_database():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Kiểm tra xem bảng products có tồn tại và có dữ liệu chưa
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE table_schema = DATABASE() AND table_name = 'products'
-        """)
-        table_exists_row = cursor.fetchone()
-        needs_init = False
-        if not table_exists_row or table_exists_row[0] == 0:
-            needs_init = True
+        cursor.execute("SELECT GET_LOCK('phone_store_init', 60)")
+        lock_row = cursor.fetchone()
+        if not lock_row or lock_row[0] != 1:
+            logging.warning("Không lấy được lock khởi tạo CSDL.")
         else:
-            cursor.execute("SELECT COUNT(*) FROM products")
-            if cursor.fetchone()[0] == 0:
-                needs_init = True
-                
-        if needs_init:
-            logging.info("CSDL MySQL trống, đang nạp dữ liệu từ init.sql...")
-            init_sql_path = os.path.join(BASE_DIR, 'init.sql')
-            if os.path.exists(init_sql_path):
-                with open(init_sql_path, 'r', encoding='utf-8') as f:
-                    sql_script = f.read()
-                sql_script = "\n".join(
-                    line for line in sql_script.splitlines()
-                    if not line.strip().startswith('--')
-                )
-                sql_script = sql_script.replace('SERIAL PRIMARY KEY', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
-                sql_script = sql_script.replace('INSERT INTO "products"', 'INSERT INTO products')
-                sql_script = sql_script.replace('INSERT INTO "users"', 'INSERT INTO users')
-                sql_script = sql_script.replace('INSERT INTO "orders"', 'INSERT INTO orders')
-                sql_script = sql_script.replace('INSERT INTO "order_items"', 'INSERT INTO order_items')
-                sql_script = sql_script.replace('INSERT INTO "banners"', 'INSERT INTO banners')
-
-                for raw_stmt in sql_script.split(';'):
-                    stmt = raw_stmt.strip()
-                    if stmt:
-                        cursor.execute(stmt)
+            try:
+                ensure_base_schema(cursor)
+                seed_initial_data(cursor)
+                conn.commit()
+                logging.info("Đã khởi tạo / đồng bộ schema và dữ liệu mẫu.")
+            finally:
+                cursor.execute("SELECT RELEASE_LOCK('phone_store_init')")
                 conn.commit()
     except Exception as e:
         logging.error(f"Lỗi khi nạp dữ liệu từ init.sql: {e}")
