@@ -1,5 +1,6 @@
 
 -- Xóa các bảng cũ nếu tồn tại để tránh xung đột
+SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS orders;
@@ -9,7 +10,7 @@ DROP TABLE IF EXISTS banners;
 -- --------------------------------------------------------
 -- --------------------------------------------------------
 CREATE TABLE products (
-    masp TEXT PRIMARY KEY,
+    masp VARCHAR(50) PRIMARY KEY,
     name TEXT NOT NULL,
     company TEXT,
     img TEXT,
@@ -36,11 +37,11 @@ CREATE TABLE products (
 -- Cấu trúc bảng `users`
 -- --------------------------------------------------------
 CREATE TABLE users (
-    username TEXT PRIMARY KEY,
+    username VARCHAR(50) PRIMARY KEY,
     pass TEXT NOT NULL,
     ho TEXT,
     ten TEXT,
-    email TEXT UNIQUE,
+    email VARCHAR(255) UNIQUE,
     products TEXT,
     off INTEGER DEFAULT 0,
     perm INTEGER DEFAULT 0
@@ -50,8 +51,8 @@ CREATE TABLE users (
 -- Cấu trúc bảng `orders`
 -- --------------------------------------------------------
 CREATE TABLE orders (
-    order_id TEXT PRIMARY KEY,
-    username TEXT,
+    order_id VARCHAR(64) PRIMARY KEY,
+    username VARCHAR(50),
     order_date TEXT NOT NULL,
     total_amount REAL,
     status TEXT NOT NULL,
@@ -60,9 +61,9 @@ CREATE TABLE orders (
 );
 
 CREATE TABLE order_items (
-    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id TEXT NOT NULL,
-    product_masp TEXT, -- Đã bỏ NOT NULL để cho phép xóa sản phẩm gốc
+    order_item_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_id VARCHAR(64) NOT NULL,
+    product_masp VARCHAR(50), -- Đã bỏ NOT NULL để cho phép xóa sản phẩm gốc
     quantity INTEGER NOT NULL,
     price_at_purchase TEXT NOT NULL,
     product_name TEXT,
@@ -74,7 +75,7 @@ CREATE TABLE order_items (
 -- Cấu trúc bảng `banners`
 -- --------------------------------------------------------
 CREATE TABLE banners (
-    banner_id SERIAL PRIMARY KEY,
+    banner_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     filename TEXT NOT NULL UNIQUE,
     alt_text TEXT,
     link_url TEXT,
@@ -95,7 +96,7 @@ INSERT INTO banners (filename, alt_text, link_url, is_active, display_order) VAL
 -- --------------------------------------------------------
 -- Chèn dữ liệu ban đầu cho bảng `products` 
 -- --------------------------------------------------------
-INSERT INTO "products" VALUES('Sam0', 'SamSung Galaxy J4+', 'Samsung', 'samsung-galaxy-j4-plus-pink-400x400.jpg', '3.490.000', 3, 26, 'tragop', '0', 'IPS LCD, 6.0'', HD+', 'Android 8.1 (Oreo)', '13 MP', '5 MP', 'Qualcomm Snapdragon 425 4 nhân 64-bit', '2 GB', '16 GB', 'MicroSD, hỗ trợ tối đa 256 GB', NULL, NULL, '3300 mAh');
+INSERT INTO products VALUES('Sam0', 'SamSung Galaxy J4+', 'Samsung', 'samsung-galaxy-j4-plus-pink-400x400.jpg', '3.490.000', 3, 26, 'tragop', '0', 'IPS LCD, 6.0'', HD+', 'Android 8.1 (Oreo)', '13 MP', '5 MP', 'Qualcomm Snapdragon 425 4 nhân 64-bit', '2 GB', '16 GB', 'MicroSD, hỗ trợ tối đa 256 GB', NULL, NULL, '3300 mAh');
 INSERT INTO "products" VALUES('Xia0', 'Xiaomi Mi 8 Lite', 'Xiaomi', 'xiaomi-mi-8-lite-black-1-600x600.jpg', '6.690.000', 0, 0, 'tragop', '0', 'IPS LCD, 6.26'', Full HD+', 'Android 8.1 (Oreo)', '12 MP và 5 MP (2 camera)', '24 MP', 'Qualcomm Snapdragon 660 8 nhân', '4 GB', '64 GB', 'MicroSD, hỗ trợ tối đa 512 GB', NULL, NULL, '3300 mAh, có sạc nhanh');
 INSERT INTO "products" VALUES('Opp0', 'Oppo F9', 'Oppo', 'oppo-f9-red-600x600.jpg', '7.690.000', 5, 188, 'giamgia', '500.000', 'LTPS LCD, 6.3'', Full HD+', 'ColorOS 5.2 (Android 8.1)', '16 MP và 2 MP (2 camera)', '25 MP', 'MediaTek Helio P60 8 nhân 64-bit', '4 GB', '64 GB', 'MicroSD, hỗ trợ tối đa 256 GB', NULL, NULL, '3500 mAh, có sạc nhanh');
 INSERT INTO "products" VALUES('Nok0', 'Nokia 5.1 Plus', 'Nokia', 'nokia-51-plus-black-18thangbh-400x400.jpg', '4.790.000', 5, 7, 'giamgia', '250.000', 'IPS LCD, 5.8'', HD+', 'Android One', '13 MP và 5 MP (2 camera)', '8 MP', 'MediaTek Helio P60 8 nhân 64-bit', '3 GB', '32 GB', 'MicroSD, hỗ trợ tối đa 256 GB', NULL, NULL, '3060 mAh, có sạc nhanh');
@@ -145,3 +146,4 @@ INSERT INTO "products" VALUES('App4', 'iPhone 8 Plus 64GB', 'Apple', 'https://cd
 INSERT INTO "products" VALUES('App5', 'iPhone 8 Plus 256GB', 'Apple', 'https://cdn.tgdd.vn/Products/Images/42/114114/iphone-8-plus-256gb-red-600x600.jpg', '25.790.000', 5, 16, 'giamgia', '500.000', 'LED-backlit IPS LCD, 4.7'', Retina HD', 'iOS 11', '12 MP', '7 MP', 'Apple A11 Bionic 6 nhân', '2 GB', '256 GB', 'Không', NULL, NULL, '1821 mAh, có sạc nhanh');
 INSERT INTO "products" VALUES('App6', 'iPhone Xr 64GB', 'Apple', 'https://cdn.tgdd.vn/Products/Images/42/190325/iphone-xr-black-400x460.png', '22.990.000', 4, 5, 'giareonline', '19.990.000', 'IPS LCD, 6.1'', IPS LCD, 16 triệu màu', 'iOS 12', '12 MP', '7 MP', 'Apple A12 Bionic 6 nhân', '3 GB', '64 GB', NULL, NULL, NULL, '2942 mAh, có sạc nhanh');
 INSERT INTO "products" VALUES('Hua3', 'Huawei Nova 2i', 'Huawei', 'https://cdn.tgdd.vn/Products/Images/42/157031/samsung-galaxy-a6-2018-2-600x600.jpg', '4.490.000', 4, 804, 'giareonline', '3.990.000', 'IPS LCD, 5.9'', Full HD+', 'Android 7.0 (Nougat)', '16 MP và 2 MP (2 camera)', '13 MP và 2 MP (2 camera)', 'HiSilicon Kirin 659 8 nhân', '4 GB', '64 GB', 'MicroSD, hỗ trợ tối đa 128 GB', NULL, NULL, '3340 mAh');
+SET FOREIGN_KEY_CHECKS = 1;

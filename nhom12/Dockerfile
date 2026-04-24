@@ -9,7 +9,7 @@ COPY requirements.txt .
 
 # Cài đặt các thư viện cần thiết
 # --no-cache-dir để không lưu cache, giúp image nhẹ hơn
-# psycopg2-binary là driver cho PostgreSQL
+# mysql-connector-python là driver cho MySQL
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Sao chép toàn bộ mã nguồn của dự án vào thư mục làm việc

@@ -3,7 +3,7 @@ Flask-Cors
 Werkzeug
 Flask-SocketIO
 gunicorn
-psycopg2-binary
+mysql-connector-python
 python-dotenv
 eventlet
 requests

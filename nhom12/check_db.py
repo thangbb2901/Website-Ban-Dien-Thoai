@@ -1,16 +1,29 @@
-import sqlite3
-import sys
+import os
 
-conn = sqlite3.connect('products.db')
-conn.row_factory = sqlite3.Row
-cursor = conn.cursor()
+import mysql.connector
+
+
+DB_HOST = os.environ.get('MYSQL_HOST', 'localhost')
+DB_PORT = int(os.environ.get('MYSQL_PORT', '3307'))
+DB_USER = os.environ.get('MYSQL_USER', 'root')
+DB_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
+DB_NAME = os.environ.get('MYSQL_DATABASE', 'phone_store')
+
+conn = mysql.connector.connect(
+    host=DB_HOST,
+    port=DB_PORT,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    database=DB_NAME,
+)
+cursor = conn.cursor(dictionary=True)
 
 # Check admin user
-cursor.execute('SELECT username, perm, off FROM users WHERE username=?', ('admin',))
+cursor.execute('SELECT username, perm, off FROM users WHERE username=%s', ('admin',))
 user = cursor.fetchone()
 
 if user:
-    print(f"✓ Admin user found")
+    print("✓ Admin user found")
     print(f"  Username: {user['username']}")
     print(f"  Perm (is_admin): {user['perm']}")
     print(f"  Off (banned): {user['off']}")

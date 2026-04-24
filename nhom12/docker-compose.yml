@@ -7,9 +7,33 @@ services:
     command: >
       sh -c "apk add --no-cache openssl && if [ ! -f /etc/ssl/mycerts/nginx.crt ]; then openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/mycerts/nginx.key -out /etc/ssl/mycerts/nginx.crt -subj '/C=VN/ST=Hanoi/L=Hanoi/O=Security/OU=IT/CN=localhost'; fi"
 
+  mysql:
+    image: mysql:8.0
+    restart: always
+    ports:
+      - "3307:3306"
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: phone_store
+      MYSQL_USER: phone_user
+      MYSQL_PASSWORD: phone_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend-network
+
   # Dịch vụ Web App (Flask + Gunicorn) - ĐƯỢC CÂN BẰNG TẢI LÀM 3 BẢN SAO
   web:
-    build: .
+    build: . 
     restart: always
     deploy:
       mode: replicated
@@ -17,8 +41,17 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_SECRET_KEY=nhom12_secret_key_fixed_2024_secure
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=phone_user
+      - MYSQL_PASSWORD=phone_password
+      - MYSQL_DATABASE=phone_store
+      - DATABASE_URL=mysql://phone_user:phone_password@mysql:3306/phone_store
     volumes:
       - .:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
     networks:
       # CHỈ cho phép Flask nằm ở mảng mạng ẩn (backend)
       - backend-network
@@ -144,4 +177,5 @@ volumes:
   grafana_data:
   prometheus_data:
   alertmanager_data:
+  mysql_data:
 

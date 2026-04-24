@@ -1,9 +1,9 @@
 import os
 import json
 import uuid
-import sqlite3
 import base64
 import re
+import mysql.connector
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -117,8 +117,11 @@ def metrics_api():
     init_metrics_from_db()
     return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
-# SỬA ĐỔI: Lấy chuỗi kết nối từ biến môi trường, fallback về SQLite nếu không có
-DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///database.db')
+# SỬA ĐỔI: Lấy chuỗi kết nối từ biến môi trường, mặc định trỏ sang MySQL
+DATABASE_URL = os.environ.get(
+    'DATABASE_URL',
+    'mysql://phone_user:phone_password@mysql:3306/phone_store'
+)
 
 # Cố định SECRET_KEY để hỗ trợ chạy nhiều replicas (Load Balancing)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'phone_store_secret_key_123')
@@ -419,7 +422,7 @@ def complete_password_reset_api():
         session.pop('password_reset_verified', None)
         session.modified = True
         return jsonify({"message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại."}), 200
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         conn.rollback()
         logging.error(f"Lỗi đặt lại mật khẩu: {e}", exc_info=True)
         return jsonify({"error": "Không thể đặt lại mật khẩu."}), 500
@@ -692,14 +695,14 @@ def delete_product_api(masp):
         if not cursor.fetchone():
             return jsonify({"error": "Sản phẩm không tìm thấy"}), 404
 
-        # 1. Tạm tắt kiểm tra khóa ngoại (SQLite)
-        cursor.execute("PRAGMA foreign_keys = OFF")
+        # 1. Tạm tắt kiểm tra khóa ngoại trong phiên hiện tại
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
         
         # 2. Thực hiện xóa sản phẩm (Bỏ qua cập nhật order_items để tránh lỗi NOT NULL)
         cursor.execute("DELETE FROM products WHERE masp = ?", (masp,))
         
         # 3. Bật lại kiểm tra khóa ngoại
-        cursor.execute("PRAGMA foreign_keys = ON")
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
         
         conn.commit()
         logging.info(f"API: Đã xóa sản phẩm '{masp}' thành công.")
@@ -998,12 +1001,12 @@ def get_orders_api():
             if not is_admin_session() and username != current_username:
                 return jsonify({"error": "Bạn không có quyền xem đơn hàng của người dùng khác."}), 403
             # Lọc đơn hàng của một người dùng cụ thể
-            cursor.execute("SELECT * FROM orders WHERE username = ? ORDER BY DATETIME(order_date) DESC", (username,))
+            cursor.execute("SELECT * FROM orders WHERE username = ? ORDER BY order_date DESC", (username,))
         else:
             if not is_admin_session():
                 return jsonify({"error": "Bạn không có quyền xem toàn bộ đơn hàng."}), 403
             # Lấy toàn bộ đơn hàng (thường dành cho Admin)
-            cursor.execute("SELECT * FROM orders ORDER BY DATETIME(order_date) DESC")
+            cursor.execute("SELECT * FROM orders ORDER BY order_date DESC")
         
         orders_rows = cursor.fetchall()
         orders_list = []
@@ -1012,7 +1015,7 @@ def get_orders_api():
             items_rows = cursor.fetchall()
             orders_list.append(order_row_to_dict(order_row, items_rows))
         return jsonify(orders_list), 200
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         logging.error(f"API Lỗi CSDL khi lấy danh sách đơn hàng: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
@@ -1119,7 +1122,7 @@ def create_order_api():
         logging.info(f"API: Đã tạo đơn hàng '{order_id}' cho người dùng '{username}' với tổng tiền {total_amount_calculated}")
         return jsonify(order_row_to_dict(new_order_row, new_items_rows)), 201
 
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi tạo đơn hàng: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -1191,7 +1194,7 @@ def update_order_status_api(order_id):
 
         logging.info(f"API: Đã cập nhật trạng thái đơn hàng '{order_id}' từ '{old_status}' thành '{new_status}'")
         return jsonify(order_row_to_dict(updated_order_row, items_rows))
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi cập nhật trạng thái đơn hàng {order_id}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -1277,7 +1280,7 @@ def update_full_order_api(order_id):
         logging.info(f"API: Đã cập nhật toàn bộ đơn hàng '{order_id}'")
         return jsonify(order_row_to_dict(updated_order_row, updated_items_rows)), 200
 
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi cập nhật đơn hàng {order_id}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -1366,7 +1369,7 @@ def reset_password_api(username):
         updated_user_row = cursor.fetchone()
         logging.info(f"API: Đã đặt lại mật khẩu cho người dùng '{username}'")
         return jsonify(user_row_to_dict(updated_user_row))
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         conn.rollback()
         logging.error(f"API Lỗi CSDL khi đặt lại mật khẩu cho {username}: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
@@ -1390,7 +1393,7 @@ def get_banners_api():
             cursor.execute("SELECT * FROM banners ORDER BY display_order ASC, uploaded_at DESC")
         banners_rows = cursor.fetchall()
         return jsonify([banner_row_to_dict(row) for row in banners_rows])
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         logging.error(f"API Lỗi CSDL khi lấy danh sách banners: {e}")
         return jsonify({"error": "Lỗi truy vấn cơ sở dữ liệu API"}), 500
     finally:
@@ -1440,7 +1443,7 @@ def add_banner_api():
             logging.info(f"API: Đã thêm banner '{filename}'")
             return jsonify(banner_row_to_dict(new_banner_row)), 201
 
-        except sqlite3.IntegrityError:
+        except mysql.connector.IntegrityError:
             if conn:
                 conn.rollback()
             if os.path.exists(filepath):
@@ -1515,7 +1518,7 @@ def update_banner_api(banner_id):
         logging.info(f"API: Đã cập nhật banner ID {banner_id}")
         return jsonify(banner_row_to_dict(updated_banner_row)), 200
 
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         if conn:
             conn.rollback()
         logging.error(f"API Lỗi CSDL khi cập nhật banner {banner_id}: {e}")
@@ -1556,7 +1559,7 @@ def delete_banner_api(banner_id):
 
         logging.info(f"API: Đã xóa banner ID {banner_id} khỏi DB")
         return jsonify({"message": "Xóa banner thành công"}), 200
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         if conn:
             conn.rollback()
         logging.error(f"API Lỗi CSDL khi xóa banner {banner_id}: {e}")
@@ -1609,7 +1612,7 @@ def ai_chat_api():
     elif any(kw in user_message_lower for kw in ["rẻ", "giá tốt", "tiết kiệm"]):
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, price, masp FROM products ORDER BY CAST(REPLACE(price, '.', '') AS REAL) ASC LIMIT 3")
+        cursor.execute("SELECT name, price, masp FROM products ORDER BY CAST(REPLACE(price, '.', '') AS DECIMAL(20,0)) ASC LIMIT 3")
         products = cursor.fetchall()
         conn.close()
         
@@ -1658,18 +1661,15 @@ def migrate_database():
         cursor = conn.cursor()
         
         # Kiểm tra xem cột quantity đã tồn tại chưa
-        cursor.execute("PRAGMA table_info(products)")
-        columns = [row[1] for row in cursor.fetchall()]
-        
-        if 'quantity' not in columns:
+        cursor.execute("SHOW COLUMNS FROM products LIKE 'quantity'")
+        if not cursor.fetchall():
             logging.info("CSDL cũ: Đang thêm cột 'quantity' vào bảng products...")
             cursor.execute("ALTER TABLE products ADD COLUMN quantity INTEGER DEFAULT 50")
             conn.commit()
 
         # Kiểm tra xem cột address trong bảng users đã tồn tại chưa
-        cursor.execute("PRAGMA table_info(users)")
-        columns_users = [row[1] for row in cursor.fetchall()]
-        if 'address' not in columns_users:
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'address'")
+        if not cursor.fetchall():
             logging.info("CSDL cũ: Đang thêm cột 'address' vào bảng users...")
             cursor.execute("ALTER TABLE users ADD COLUMN address TEXT")
             conn.commit()
@@ -1677,19 +1677,17 @@ def migrate_database():
 
         # Kiểm tra cột banner_type trong bảng banners
         try:
-            cursor.execute("PRAGMA table_info(banners)")
-            columns_banners = [row[1] for row in cursor.fetchall()]
-            if columns_banners and 'banner_type' not in columns_banners:
+            cursor.execute("SHOW COLUMNS FROM banners LIKE 'banner_type'")
+            if not cursor.fetchall():
                 logging.info("CSDL cũ: Đang thêm cột 'banner_type' vào bảng banners...")
                 cursor.execute("ALTER TABLE banners ADD COLUMN banner_type TEXT DEFAULT 'hero'")
                 conn.commit()
-            if columns_banners:
-                cursor.execute("UPDATE banners SET banner_type = 'hero' WHERE banner_type IS NULL OR banner_type = ''")
-                conn.commit()
-        except sqlite3.Error as e:
+            cursor.execute("UPDATE banners SET banner_type = 'hero' WHERE banner_type IS NULL OR banner_type = ''")
+            conn.commit()
+        except mysql.connector.Error as e:
             logging.warning(f"Bỏ qua migrate banners (bảng banners có thể chưa tồn tại): {e}")
 
-    except sqlite3.Error as e:
+    except mysql.connector.Error as e:
         logging.error(f"Lỗi khi migration CSDL: {e}")
     finally:
         if conn:
@@ -1749,9 +1747,14 @@ def initialize_database():
         conn = get_db_connection()
         cursor = conn.cursor()
         # Kiểm tra xem bảng products có tồn tại và có dữ liệu chưa
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE() AND table_name = 'products'
+        """)
+        table_exists_row = cursor.fetchone()
         needs_init = False
-        if not cursor.fetchone():
+        if not table_exists_row or table_exists_row[0] == 0:
             needs_init = True
         else:
             cursor.execute("SELECT COUNT(*) FROM products")
@@ -1759,14 +1762,26 @@ def initialize_database():
                 needs_init = True
                 
         if needs_init:
-            logging.info("CSDL SQLite trống, đang nạp dữ liệu từ init.sql...")
+            logging.info("CSDL MySQL trống, đang nạp dữ liệu từ init.sql...")
             init_sql_path = os.path.join(BASE_DIR, 'init.sql')
             if os.path.exists(init_sql_path):
                 with open(init_sql_path, 'r', encoding='utf-8') as f:
                     sql_script = f.read()
-                # Chuyển đổi cú pháp PostgreSQL sang SQLite
-                sql_script = sql_script.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
-                cursor.executescript(sql_script)
+                sql_script = "\n".join(
+                    line for line in sql_script.splitlines()
+                    if not line.strip().startswith('--')
+                )
+                sql_script = sql_script.replace('SERIAL PRIMARY KEY', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
+                sql_script = sql_script.replace('INSERT INTO "products"', 'INSERT INTO products')
+                sql_script = sql_script.replace('INSERT INTO "users"', 'INSERT INTO users')
+                sql_script = sql_script.replace('INSERT INTO "orders"', 'INSERT INTO orders')
+                sql_script = sql_script.replace('INSERT INTO "order_items"', 'INSERT INTO order_items')
+                sql_script = sql_script.replace('INSERT INTO "banners"', 'INSERT INTO banners')
+
+                for raw_stmt in sql_script.split(';'):
+                    stmt = raw_stmt.strip()
+                    if stmt:
+                        cursor.execute(stmt)
                 conn.commit()
     except Exception as e:
         logging.error(f"Lỗi khi nạp dữ liệu từ init.sql: {e}")
@@ -1786,10 +1801,10 @@ with app.app_context():
 if __name__ == '__main__':
     print("\n" + "="*50)
     print(" SERVER ĐANG CHẠY TẠI: http://127.0.0.1:5000")
-    if DATABASE_URL.startswith('postgres'):
-        print(" KẾT NỐI TỚI DATABASE: PostgreSQL")
+    if DATABASE_URL.startswith('mysql'):
+        print(" KẾT NỐI TỚI DATABASE: MySQL")
     else:
-        print(" KẾT NỐI TỚI DATABASE: SQLite")
+        print(" KẾT NỐI TỚI DATABASE: Không xác định")
     print("="*50 + "\n")
     # Khi chạy với Gunicorn, dòng này sẽ không được thực thi. Nó chỉ dành cho dev.
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
