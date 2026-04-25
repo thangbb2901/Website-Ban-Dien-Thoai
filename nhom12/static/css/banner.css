@@ -27,7 +27,13 @@
 }
 
 .banner .item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
+    background: #fff;
+    isolation: isolate;
 }
 
 .banner .item a,
@@ -36,8 +42,32 @@
     width: 100%;
 }
 
+.banner .item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--banner-bg);
+    background-size: cover;
+    background-position: center center;
+    filter: blur(28px);
+    transform: scale(1.12);
+    opacity: 0.24;
+    z-index: 0;
+}
+
+.banner .item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0.72), rgba(255,255,255,0.18) 18%, rgba(255,255,255,0.18) 82%, rgba(255,255,255,0.72));
+    z-index: 1;
+    pointer-events: none;
+}
+
 .banner .item a {
     position: relative;
+    z-index: 2;
+    height: 100%;
 }
 
 .banner .item img {
