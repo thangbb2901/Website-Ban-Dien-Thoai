@@ -10,11 +10,24 @@
 }
 
 .banner .owl-carousel {
+    height: clamp(170px, 24vw, 320px);
     background: #fff;
     border: 1px solid var(--tgdd-border);
     border-radius: 14px;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
+}
+
+.banner .owl-stage-outer,
+.banner .owl-stage,
+.banner .owl-item,
+.banner .item,
+.banner .item a {
+    height: 100%;
+}
+
+.banner .item {
+    overflow: hidden;
 }
 
 .banner .item a,
@@ -23,8 +36,24 @@
     width: 100%;
 }
 
+.banner .item a {
+    position: relative;
+}
+
+.banner .item img {
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+}
+
 .banner .owl-dots {
     padding: 10px 0 12px;
+}
+
+@media (max-width: 768px) {
+    .banner .owl-carousel {
+        height: 180px;
+    }
 }
 
 .banner .owl-theme .owl-dots .owl-dot span {
