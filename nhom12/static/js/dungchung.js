@@ -35,14 +35,36 @@ function setLocalStorageItem(key, value) {
 }
 
 // Hàm xử lý đường dẫn ảnh sản phẩm
+function normalizeImageUrl(imagePath, kind = 'product') {
+    if (!imagePath) return imagePath;
+
+    const value = String(imagePath);
+    if (value.startsWith('/media/products/')) {
+        return value.replace('/media/products/', '/static/img/products/');
+    }
+    if (value.startsWith('/media/banners/')) {
+        return value.replace('/media/banners/', '/static/img/banners/');
+    }
+    if (value.startsWith('media/products/')) {
+        return '/' + value.replace('media/products/', 'static/img/products/');
+    }
+    if (value.startsWith('media/banners/')) {
+        return '/' + value.replace('media/banners/', 'static/img/banners/');
+    }
+
+    if (!value.startsWith('http') && !value.startsWith('/')) {
+        const imageName = value.includes('/') ? value.split('/').pop() : value;
+        return kind === 'banner'
+            ? `/static/img/banners/${imageName}`
+            : `/static/img/products/${imageName}`;
+    }
+
+    return value;
+}
+
 function processProductImagePath(product) {
     if (product && product.img) {
-        if (!product.img.startsWith('http') && !product.img.startsWith('/')) {
-            // Nếu img chỉ là tên file hoặc đường dẫn tương đối cũ (ví dụ: "img/products/...")
-            let imageName = product.img.includes('/') ? product.img.split('/').pop() : product.img;
-            product.img = `/static/img/products/${imageName}`;
-        }
-        // Nếu đã là URL tuyệt đối hoặc path nội bộ bắt đầu bằng / thì giữ nguyên
+        product.img = normalizeImageUrl(product.img, 'product');
     }
     return product;
 }

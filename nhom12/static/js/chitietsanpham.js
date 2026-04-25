@@ -205,14 +205,14 @@ function phanTich_URL_chiTietSanPham() {
              // QUAN TRỌNG: sanPhamHienTai.img phải là đường dẫn đúng từ khoiTao()
              // Ví dụ: /static/img/products/ten_file.jpg
              // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH Ở ĐÂY:
-             hinhChinh.src = sanPhamHienTai.img || '/static/img/default.png'; 
+             hinhChinh.src = normalizeImageUrl(sanPhamHienTai.img, 'product') || '/static/img/default.png'; 
              hinhChinh.alt = sanPhamHienTai.name || 'Hình sản phẩm';
         }
     }
     const bigImg = document.getElementById('bigimg');
     if (bigImg) {
         // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH Ở ĐÂY:
-        bigImg.src = sanPhamHienTai.img || '/static/img/default.png';
+        bigImg.src = normalizeImageUrl(sanPhamHienTai.img, 'product') || '/static/img/default.png';
         bigImg.alt = sanPhamHienTai.name || 'Hình sản phẩm';
     }
 
@@ -221,22 +221,22 @@ function phanTich_URL_chiTietSanPham() {
         smallImgContainer.innerHTML = ''; 
         
         // Thêm ảnh chính vào gallery trước
-        if (sanPhamHienTai.img) addSmallImgToOwl(sanPhamHienTai.img, $(smallImgContainer));
+        if (sanPhamHienTai.img) addSmallImgToOwl(normalizeImageUrl(sanPhamHienTai.img, 'product'), $(smallImgContainer));
 
         // Kiểm tra và thêm các ảnh gallery khác nếu có (ví dụ: sanPhamHienTai.detail.imgSmall là một mảng)
         if (sanPhamHienTai.detail && Array.isArray(sanPhamHienTai.detail.imgSmall)) {
             sanPhamHienTai.detail.imgSmall.forEach(imgName => {
                 // Giả sử imgName chỉ là tên file, cần thêm tiền tố
-                addSmallImgToOwl(`/static/img/products/${imgName}`, $(smallImgContainer));
+                addSmallImgToOwl(normalizeImageUrl(`/static/img/products/${imgName}`, 'product'), $(smallImgContainer));
             });
         } else {
             // Fallback nếu không có gallery cụ thể (nên lấy ảnh liên quan nếu có)
             // SỬA ĐỔI ĐƯỜNG DẪN ẢNH GALLERY FALLBACK Ở ĐÂY:
             // Cần thay thế bằng logic lấy ảnh liên quan hoặc bỏ đi nếu không có
             // Ví dụ tạm thời giữ lại các ảnh cũ đã sửa:
-            addSmallImgToOwl("/static/img/products/samsung-galaxy-j4-plus-pink-400x400.jpg", $(smallImgContainer));
-            addSmallImgToOwl("/static/img/products/xiaomi-mi-8-lite-black-1-600x600.jpg", $(smallImgContainer));
-            addSmallImgToOwl("/static/img/products/oppo-f9-red-600x600.jpg", $(smallImgContainer));
+            addSmallImgToOwl(normalizeImageUrl("/static/img/products/samsung-galaxy-j4-plus-pink-400x400.jpg", 'product'), $(smallImgContainer));
+            addSmallImgToOwl(normalizeImageUrl("/static/img/products/xiaomi-mi-8-lite-black-1-600x600.jpg", 'product'), $(smallImgContainer));
+            addSmallImgToOwl(normalizeImageUrl("/static/img/products/oppo-f9-red-600x600.jpg", 'product'), $(smallImgContainer));
         }
 
         var owl = $(smallImgContainer);

@@ -451,7 +451,7 @@ function openThemBanner(type = 'hero') {
     const khungThem = document.getElementById(getBannerModalId(type, 'add'));
     if (khungThem) {
         // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH TẠI ĐÂY (nếu có)
-        const defaultBannerImg = '/static/img/banners/default-banner.png'; // Giả sử bạn có ảnh default trong thư mục banners
+        const defaultBannerImg = normalizeImageUrl('/static/img/banners/default-banner.png', 'banner');
         // Hoặc '/static/img/default-banner.png' nếu nó nằm ngoài
         khungThem.innerHTML = `
             <span class="close" onclick="this.parentElement.style.transform = 'scale(0)';">&times;</span>
@@ -542,7 +542,7 @@ async function addKhungSuaBanner(bannerId, type = 'hero') {
     const khungSua = document.getElementById(getBannerModalId(type, 'edit'));
     if (khungSua) {
         // SỬA ĐỔI ĐƯỜNG DẪN ẢNH MẶC ĐỊNH TẠI ĐÂY (nếu currentEditingBannerData.image_url không có)
-        const bannerImgSrc = currentEditingBannerData.image_url || '/static/img/banners/default-banner.png';
+        const bannerImgSrc = normalizeImageUrl(currentEditingBannerData.image_url || '/static/img/banners/default-banner.png', 'banner');
         khungSua.innerHTML = `
             <span class="close" onclick="this.parentElement.style.transform = 'scale(0)'; currentEditingBannerData = null;">&times;</span>
             <form id="formSuaBanner${suffix}" onsubmit="return false;" enctype="multipart/form-data">
@@ -1001,11 +1001,7 @@ async function addKhungSuaSanPham(masp) {
     });
 
     // SỬA ĐỔI: Đường dẫn ảnh mặc định
-    let imgSrcToDisplay = productToEdit.img || '/static/img/default.png';
-    if (productToEdit.img && !productToEdit.img.startsWith('/') && !productToEdit.img.startsWith('http')) {
-        let imageName = productToEdit.img.includes('/') ? productToEdit.img.split('/').pop() : productToEdit.img;
-        imgSrcToDisplay = `/static/img/products/${imageName}`;
-    }
+    let imgSrcToDisplay = normalizeImageUrl(productToEdit.img || '/static/img/default.png', 'product');
 
 
     s += `  </select> </td> </tr>

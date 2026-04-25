@@ -144,9 +144,7 @@ function addProductToTable(user) {
                 ? `<div style="color:#dc2626; font-weight:700; margin-top:6px;">Chỉ còn ${stock} máy trong kho</div>`
                 : `<div style="color:#059669; font-weight:600; margin-top:6px;">Còn ${stock} máy</div>`);
 
-        var hinhAnhSrc = p.img && (p.img.startsWith('/static/') || p.img.startsWith('/media/') || p.img.startsWith('http'))
-            ? p.img
-            : (p.img ? `/static/img/products/${p.img}` : '/static/img/default_product.png');
+        var hinhAnhSrc = normalizeImageUrl(p.img, 'product') || '/static/img/default_product.png';
 
         s += `
             <div class="cart-item-card">
