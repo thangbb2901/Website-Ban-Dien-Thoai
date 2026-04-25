@@ -129,7 +129,7 @@
                     </tr>
                     <tr>
                         <td>Tên sản phẩm:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_name"></td>
                     </tr>
                     <tr>
                         <td>Hãng:</td>
@@ -153,20 +153,20 @@
                     </tr>
                     <tr>
                         <td>Giá tiền:</td>
-                        <td><input type="text"></td> 
+                        <td><input type="text" id="add_price"></td> 
                     </tr>
                     <tr>
                         <td>Số sao (0-5):</td>
-                        <td><input type="number" value="0" min="0" max="5"></td> 
+                        <td><input type="number" id="add_star" value="0" min="0" max="5"></td> 
                     </tr>
                     <tr>
                         <td>Đánh giá (số nguyên):</td>
-                        <td><input type="number" value="0" min="0"></td> 
+                        <td><input type="number" id="add_rateCount" value="0" min="0"></td> 
                     </tr>
                     <tr>
                         <td>Khuyến mãi:</td>
                         <td>
-                            <select>
+                            <select id="add_promo_name">
                                 <option value="">Không</option>
                                 <option value="tragop">Trả góp</option>
                                 <option value="giamgia">Giảm giá</option>
@@ -177,54 +177,54 @@
                     </tr>
                     <tr>
                         <td>Giá trị khuyến mãi:</td>
-                        <td><input type="text" placeholder=""></td>
+                        <td><input type="text" id="add_promo_value" placeholder=""></td>
                     </tr>
                     <tr>
                         <td>Số lượng kho:</td>
-                        <td><input type="number" id="soluongThem" value="50" min="0"></td>
+                        <td><input type="number" id="add_quantity" value="50" min="0"></td>
                     </tr>
                     <tr>
                         <th colspan="2">Thông số kĩ thuật</th>
                     </tr>
                     <tr>
                         <td>Màn hình:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_screen"></td>
                     </tr>
                     <tr>
                         <td>Hệ điều hành:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_os"></td>
                     </tr>
                     <tr>
-                        <td>Camara sau:</td>
-                        <td><input type="text"></td>
+                        <td>Camera sau:</td>
+                        <td><input type="text" id="add_detail_camara"></td>
                     </tr>
                     <tr>
-                        <td>Camara trước:</td>
-                        <td><input type="text"></td>
+                        <td>Camera trước:</td>
+                        <td><input type="text" id="add_detail_camaraFront"></td>
                     </tr>
                     <tr>
                         <td>CPU:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_cpu"></td>
                     </tr>
                     <tr>
                         <td>RAM:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_ram"></td>
                     </tr>
                     <tr>
                         <td>Bộ nhớ trong:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_rom"></td>
                     </tr>
                     <tr>
                         <td>Thẻ nhớ:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_memory"></td>
                     </tr>
                      <tr>
                         <td>SIM:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_sim"></td>
                     </tr>
                     <tr>
                         <td>Dung lượng Pin:</td>
-                        <td><input type="text"></td>
+                        <td><input type="text" id="add_detail_battery"></td>
                     </tr>
                     <tr>
                         <td colspan="2" class="table-footer"> <button onclick="themSanPham()">THÊM</button> </td>

@@ -768,91 +768,55 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
     var khung = document.getElementById(idKhung);
     if (!khung) return null;
 
-    // Lấy file ảnh thực tế thay vì chỉ lấy src
     const imageInput = khung.querySelector('input[type="file"]');
     const imageFile = (imageInput && imageInput.files.length > 0) ? imageInput.files[0] : null;
+    const prefix = isEditMode ? 'edit_' : 'add_';
 
-    var trs = khung.querySelectorAll('table.overlayTable tr');
-
-    function getValueFromInput(trIndex, inputSelector = 'input', isSelect = false) {
-        try {
-            const cell = trs[trIndex].cells[1];
-            if (!cell) return "";
-            const element = cell.querySelector(inputSelector);
-            if (!element) return "";
-            return isSelect ? element.value : element.value.trim();
-        } catch (e) { return ""; }
+    function getVal(fieldId, fallback = '') {
+        const el = khung.querySelector(`#${prefix}${fieldId}`);
+        return el ? (el.value || '').trim() : fallback;
     }
 
-    function normalizeText(text) {
-        return String(text || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[:]/g, '')
-            .trim()
-            .toLowerCase();
-    }
-
-    function getValueByLabel(labelKeyword, inputSelector = 'input', isSelect = false) {
-        const normalizedKeyword = normalizeText(labelKeyword);
-        for (const tr of trs) {
-            const labelCell = tr.cells && tr.cells[0] ? tr.cells[0] : null;
-            const valueCell = tr.cells && tr.cells[1] ? tr.cells[1] : null;
-            if (!labelCell || !valueCell) continue;
-            const labelText = normalizeText(labelCell.textContent || '');
-            if (!labelText.includes(normalizedKeyword)) continue;
-            const element = valueCell.querySelector(inputSelector);
-            if (!element) return "";
-            return isSelect ? element.value : element.value.trim();
-        }
-        return "";
-    }
-
-    function getValueById(localId, fallback = "") {
-        const el = khung.querySelector(`#${localId}`);
-        if (!el) return fallback;
-        return (el.value || '').trim();
-    }
-
-    var name = isEditMode ? getValueById('edit_name', getValueFromInput(2)) : getValueFromInput(2);
-    var company = getValueFromInput(3, 'select', true);
-    var priceString = isEditMode ? getValueById('edit_price', getValueFromInput(5)) : getValueFromInput(5);
+    const companySelect = khung.querySelector('select[name="chonCompany"]');
+    var company = companySelect ? companySelect.value : '';
+    var name = getVal('name');
+    var priceString = getVal('price');
 
     if (!name || !company || !priceString) {
         addAlertBox('Tên sản phẩm, hãng, và giá không được để trống.', '#f55', '#fff', 4000);
         return null;
     }
 
-    // === BẮT ĐẦU PHẦN SỬA LỖI CHỈ SỐ ===
-    var detail = {};
-    detail.screen = isEditMode ? getValueById('edit_detail_screen', getValueByLabel('Màn hình') || getValueFromInput(12)) : (getValueByLabel('Màn hình') || getValueFromInput(12));
-    detail.os = isEditMode ? getValueById('edit_detail_os', getValueByLabel('Hệ điều hành') || getValueFromInput(13)) : (getValueByLabel('Hệ điều hành') || getValueFromInput(13));
-    detail.camara = isEditMode ? getValueById('edit_detail_camara', getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(14)) : (getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(14));
-    detail.camaraFront = isEditMode ? getValueById('edit_detail_camaraFront', getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(15)) : (getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(15));
-    detail.cpu = isEditMode ? getValueById('edit_detail_cpu', getValueByLabel('CPU') || getValueFromInput(16)) : (getValueByLabel('CPU') || getValueFromInput(16));
-    detail.ram = isEditMode ? getValueById('edit_detail_ram', getValueByLabel('RAM') || getValueFromInput(17)) : (getValueByLabel('RAM') || getValueFromInput(17));
-    detail.rom = isEditMode ? getValueById('edit_detail_rom', getValueByLabel('Bộ nhớ trong') || getValueFromInput(18)) : (getValueByLabel('Bộ nhớ trong') || getValueFromInput(18));
-    detail.microUSB = isEditMode ? getValueById('edit_detail_memory', getValueByLabel('Thẻ nhớ') || getValueFromInput(19)) : (getValueByLabel('Thẻ nhớ') || getValueFromInput(19));
-    detail.sim = isEditMode ? getValueById('edit_detail_sim', getValueByLabel('SIM') || getValueFromInput(20)) : (getValueByLabel('SIM') || getValueFromInput(20));
-    detail.battery = isEditMode ? getValueById('edit_detail_battery', getValueByLabel('Pin') || getValueFromInput(21)) : (getValueByLabel('Pin') || getValueFromInput(21));
+    var detail = {
+        screen: getVal('detail_screen'),
+        os: getVal('detail_os'),
+        camara: getVal('detail_camara'),
+        camaraFront: getVal('detail_camaraFront'),
+        cpu: getVal('detail_cpu'),
+        ram: getVal('detail_ram'),
+        rom: getVal('detail_rom'),
+        microUSB: getVal('detail_memory'),
+        sim: getVal('detail_sim'),
+        battery: getVal('detail_battery')
+    };
+
+    const promoName = getVal('promo_name');
 
     const productData = {
         name: name,
         company: company,
-        img_file: imageFile, // Thêm file ảnh để gửi đi
+        img_file: imageFile,
         price: priceString,
-        star: isEditMode ? getValueById('edit_star', getValueFromInput(6, 'input[type="number"]')) || 0 : getValueFromInput(6, 'input[type="number"]') || 0,
-        rateCount: isEditMode ? getValueById('edit_rateCount', getValueFromInput(7, 'input[type="number"]')) || 0 : getValueFromInput(7, 'input[type="number"]') || 0,
+        star: getVal('star') || 0,
+        rateCount: getVal('rateCount') || 0,
         promo: {
-            "name": getValueFromInput(8, 'select', true),
-            "value": isEditMode ? getValueById('edit_promo_value', getValueFromInput(9)) : getValueFromInput(9)
+            "name": promoName,
+            "value": getVal('promo_value')
         },
-        quantity: isEditMode ? getValueById('edit_quantity', getValueFromInput(10, 'input[type="number"]')) || 0 : getValueFromInput(10, 'input[type="number"]') || 0,
+        quantity: getVal('quantity') || 0,
         detail: detail
     };
-    // === KẾT THÚC PHẦN SỬA LỖI CHỈ SỐ ===
 
-    // Thêm masp nếu là form thêm mới
     if (!isEditMode) {
         productData.masp = khung.querySelector('#maspThem') ? khung.querySelector('#maspThem').value : '';
     }
@@ -1031,7 +995,7 @@ async function addKhungSuaSanPham(masp) {
         <tr> <td>Giá tiền (số):</td> <td><input type="number" id="edit_price" value="${escAttr(stringToNum(productToEdit.price))}"></td> </tr>
         <tr> <td>Số sao (0-5):</td> <td><input type="number" id="edit_star" value="${escAttr(productToEdit.star || 0)}" min="0" max="5"></td> </tr>
         <tr> <td>Số đánh giá:</td> <td><input type="number" id="edit_rateCount" value="${escAttr(productToEdit.rateCount || 0)}" min="0"></td> </tr>
-        <tr> <td>Khuyến mãi:</td> <td> <select>
+        <tr> <td>Khuyến mãi:</td> <td> <select id="edit_promo_name">
             <option value="">Không</option>
             <option value="tragop" ${promo.name == 'tragop' ? 'selected' : ''}>Trả góp</option>
             <option value="giamgia" ${promo.name == 'giamgia' ? 'selected' : ''}>Giảm giá</option>
