@@ -247,16 +247,16 @@ function themVaoGioHang(masp, tensp) {
     if (!user) {
         addAlertBox('Bạn cần đăng nhập để mua hàng!', '#ff8c00', '#000', 3000, 'small');
         showTaiKhoan(true);
-        return;
+        return false;
     }
     if (user.off) {
         addAlertBox('Tài khoản của bạn hiện đang bị khóa nên không thể mua hàng!', '#aa0000', '#fff', 10000, 'small');
-        return;
+        return false;
     }
     const productInStock = Array.isArray(window.list_products) ? timKiemTheoMa(window.list_products, masp) : null;
     if (productInStock && Number(productInStock.quantity) <= 0) {
         addAlertBox(`Sản phẩm ${tensp} đã hết hàng!`, '#ff0000', '#fff', 3500, 'small');
-        return;
+        return false;
     }
     var t = new Date().toISOString();
     var daCoSanPham = false;
@@ -286,6 +286,7 @@ function themVaoGioHang(masp, tensp) {
     setCurrentUser(user);
     updateListUser(user);
     capNhat_ThongTin_CurrentUser();
+    return true;
 }
 
 // Hàm lấy thông tin người dùng hiện tại từ localStorage
@@ -645,15 +646,54 @@ function stringToNum(str, char) {
     return Number(str.split(char || '.').join(''));
 }
 
+var SEARCH_HISTORY_KEY = 'PhoneStoreSearchHistory';
+var SEARCH_HISTORY_LIMIT = 8;
+
+function getSearchHistory() {
+    try {
+        var history = JSON.parse(window.localStorage.getItem(SEARCH_HISTORY_KEY));
+        return Array.isArray(history) ? history : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveSearchHistory(term) {
+    var value = (term || '').trim();
+    if (!value) return;
+
+    var history = getSearchHistory().filter(function (item) {
+        return item && item.toLowerCase() !== value.toLowerCase();
+    });
+    history.unshift(value);
+    if (history.length > SEARCH_HISTORY_LIMIT) history = history.slice(0, SEARCH_HISTORY_LIMIT);
+
+    try {
+        window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+        console.error('Không thể lưu lịch sử tìm kiếm:', e);
+    }
+}
+
+function createAutocompleteItem(text, onClick) {
+    var item = document.createElement("DIV");
+    item.setAttribute('data-autocomplete-item', '1');
+    item.textContent = text;
+    item.addEventListener("click", onClick);
+    return item;
+}
+
 // Hàm autocomplete cho ô tìm kiếm
 function autocomplete(inp, arr) {
     if (!inp || !Array.isArray(arr)) return;
     var currentFocus;
 
+    if (inp.dataset.autocompleteBound === 'true') return;
+    inp.dataset.autocompleteBound = 'true';
+
     inp.addEventListener("input", function (e) { // Sử dụng "input" thay cho "keyup" để bắt cả paste
-        var a, b, i, val = this.value;
+        var a, b, i, val = (this.value || '').trim();
         closeAllLists();
-        if (!val) return false;
         currentFocus = -1;
 
         a = document.createElement("DIV");
@@ -662,32 +702,69 @@ function autocomplete(inp, arr) {
         this.parentNode.appendChild(a);
 
         let count = 0;
-        for (i = 0; i < arr.length && count < 7; i++) {
-            if (arr[i] && arr[i].name && arr[i].name.toUpperCase().includes(val.toUpperCase())) {
-                b = document.createElement("DIV");
-                let matchIndex = arr[i].name.toUpperCase().indexOf(val.toUpperCase());
-                b.innerHTML = arr[i].name.substring(0, matchIndex) +
-                    "<strong>" + arr[i].name.substring(matchIndex, matchIndex + val.length) + "</strong>" +
-                    arr[i].name.substring(matchIndex + val.length);
-                b.innerHTML += `<input type='hidden' value='${arr[i].name.replace(/'/g, "&apos;")}'>`; // Escape '
-                b.setAttribute('data-masp', arr[i].masp);
+        if (val) {
+            for (i = 0; i < arr.length && count < 7; i++) {
+                if (arr[i] && arr[i].name && arr[i].name.toUpperCase().includes(val.toUpperCase())) {
+                    b = document.createElement("DIV");
+                    let matchIndex = arr[i].name.toUpperCase().indexOf(val.toUpperCase());
+                    b.innerHTML = arr[i].name.substring(0, matchIndex) +
+                        "<strong>" + arr[i].name.substring(matchIndex, matchIndex + val.length) + "</strong>" +
+                        arr[i].name.substring(matchIndex + val.length);
+                    b.innerHTML += `<input type='hidden' value='${arr[i].name.replace(/'/g, "&apos;")}'>`; // Escape '
+                    b.setAttribute('data-masp', arr[i].masp);
+                    b.setAttribute('data-autocomplete-item', '1');
 
-                b.addEventListener("click", function (e) {
-                    inp.value = this.getElementsByTagName("input")[0].value;
-                    closeAllLists();
-                    var masp = this.getAttribute('data-masp');
-                    // SỬA ĐỔI: Chuyển đến route /chitietsanpham
-                    if (masp) window.location.href = `/chitietsanpham?masp=${masp}`;
-                });
-                a.appendChild(b);
-                count++;
+                    b.addEventListener("click", function (e) {
+                        inp.value = this.getElementsByTagName("input")[0].value;
+                        saveSearchHistory(inp.value);
+                        closeAllLists();
+                        var masp = this.getAttribute('data-masp');
+                        if (masp) window.location.href = `/chitietsanpham?masp=${masp}`;
+                    });
+                    a.appendChild(b);
+                    count++;
+                }
+            }
+        } else {
+            var history = getSearchHistory();
+            if (history.length) {
+                var historyTitle = document.createElement("DIV");
+                historyTitle.className = "autocomplete-history-title";
+                historyTitle.textContent = "Lịch sử tìm kiếm";
+                a.appendChild(historyTitle);
+
+                for (i = 0; i < history.length && count < SEARCH_HISTORY_LIMIT; i++) {
+                    (function (term) {
+                        var historyItem = createAutocompleteItem(term, function () {
+                            inp.value = term;
+                            saveSearchHistory(term);
+                            closeAllLists();
+                            if (inp.form && typeof inp.form.submit === 'function') inp.form.submit();
+                        });
+                        historyItem.classList.add('autocomplete-history-item');
+                        a.appendChild(historyItem);
+                    })(history[i]);
+                    count++;
+                }
             }
         }
     });
 
+    inp.addEventListener("focus", function () {
+        if (this.value && this.value.trim()) return;
+        this.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    if (inp.form && inp.form.dataset.searchHistoryBound !== 'true') {
+        inp.form.dataset.searchHistoryBound = 'true';
+        inp.form.addEventListener('submit', function () {
+            saveSearchHistory(inp.value);
+        });
+    }
+
     inp.addEventListener("keydown", function (e) {
         var x = document.getElementById(this.id + "autocomplete-list");
-        if (x) x = x.getElementsByTagName("div");
+        if (x) x = x.querySelectorAll('[data-autocomplete-item="1"]');
         if (!x || x.length === 0) return;
 
         if (e.keyCode == 40) { // Down
@@ -1506,13 +1583,21 @@ function initHeaderLocationPicker() {
 }
 
 // ================== ADDRESS PICKER LOGIC (SHARED) ==================
+function resolveAddressField(idPrefix = "", field = "") {
+    const lowerId = `${idPrefix}${field.toLowerCase()}`;
+    const camelId = `${idPrefix}${field.charAt(0).toUpperCase()}${field.slice(1).toLowerCase()}`;
+    return document.getElementById(lowerId) || document.getElementById(camelId);
+}
+
 function getAddressFieldPrefix(elementId = "") {
+    const camelMatch = elementId.match(/^(.*?)(Province|District|Ward)$/);
+    if (camelMatch) return camelMatch[1];
     const match = elementId.match(/^(.*-)(province|district|ward)$/);
     return match ? match[1] : "";
 }
 
 async function loadProvinces(idPrefix = "") {
-    const provinceSelect = document.getElementById(idPrefix + 'province');
+    const provinceSelect = resolveAddressField(idPrefix, 'province');
     if (!provinceSelect) return;
 
     // Nếu đã có dữ liệu rồi thì không tải lại
@@ -1536,8 +1621,8 @@ async function loadProvinces(idPrefix = "") {
 }
 
 async function loadDistricts(provinceCode, idPrefix = "") {
-    const districtSelect = document.getElementById(idPrefix + 'district');
-    const wardSelect = document.getElementById(idPrefix + 'ward');
+    const districtSelect = resolveAddressField(idPrefix, 'district');
+    const wardSelect = resolveAddressField(idPrefix, 'ward');
     if (!districtSelect) return;
 
     districtSelect.innerHTML = '<option value="" disabled selected hidden>Chọn Quận / Huyện</option>';
@@ -1568,7 +1653,7 @@ async function loadDistricts(provinceCode, idPrefix = "") {
 }
 
 async function loadWards(districtCode, idPrefix = "") {
-    const wardSelect = document.getElementById(idPrefix + 'ward');
+    const wardSelect = resolveAddressField(idPrefix, 'ward');
     if (!wardSelect) return;
 
     wardSelect.innerHTML = '<option value="" disabled selected hidden>Chọn Phường / Xã</option>';
@@ -1599,9 +1684,9 @@ document.addEventListener('change', function (e) {
     const targetId = e.target.id || "";
     const idPrefix = getAddressFieldPrefix(targetId);
 
-    if (targetId === 'province' || targetId.endsWith('-province')) {
+    if (targetId === 'province' || targetId === 'Province' || targetId.endsWith('-province') || targetId.endsWith('Province')) {
         loadDistricts(e.target.value, idPrefix);
-    } else if (targetId === 'district' || targetId.endsWith('-district')) {
+    } else if (targetId === 'district' || targetId === 'District' || targetId.endsWith('-district') || targetId.endsWith('District')) {
         loadWards(e.target.value, idPrefix);
     }
 });

@@ -37,6 +37,8 @@ function getCartStockIssues(user) {
     return issues;
 }
 
+const OPEN_CHECKOUT_AFTER_CART_KEY = 'openCheckoutAfterAddToCart';
+
 window.onload = async function () {
     try {
         await khoiTao(); // Đợi khoiTao() (từ dungchung.js) hoàn thành
@@ -99,6 +101,12 @@ window.onload = async function () {
     }
 
     addProductToTable(currentuser);
+    if (window.localStorage.getItem(OPEN_CHECKOUT_AFTER_CART_KEY) === '1') {
+        window.localStorage.removeItem(OPEN_CHECKOUT_AFTER_CART_KEY);
+        setTimeout(() => {
+            showCheckoutForm();
+        }, 150);
+    }
     // Gọi hienThiChiTietThanhToan sau khi DOM sẵn sàng (đã chuyển xuống DOMContentLoaded)
 }
 

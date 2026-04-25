@@ -509,7 +509,7 @@ function renderHomepageSections() {
         })}
         ${renderProductGridSection({
             title: 'Mua online - Hàng chuẩn, giá mê',
-            subtitle: 'Danh mục nổi bật được gom lại để bạn duyệt nhanh giống trang chủ siêu thị điện máy.',
+            subtitle: 'Gom các sản phẩm nổi bật để bạn dễ chọn nhanh trong một màn hình.',
             products: newArrivalProducts,
             ctaHref: '/?promo=moiramat',
             ctaLabel: 'Xem thêm hàng mới',
@@ -1033,7 +1033,7 @@ async function loadTopProducts() {
         let html = `
         <div class="khungSanPham top-products-section">
             <h3 class="tenKhung top-products-title">
-                <i class="fa fa-trophy"></i> SẢN PHẨM BÁN CHẠY
+                SẢN PHẨM BÁN CHẠY
             </h3>
             <div class="top-products-slider owl-carousel owl-theme" id="top-products-carousel">`;
 
@@ -1066,14 +1066,14 @@ async function loadTopProducts() {
         setTimeout(() => {
             $('#top-products-carousel').owlCarousel({
                 loop: false, // Tắt vòng lặp để giữ đúng thứ tự #1 #2 #3...
-                margin: 15,
+                margin: 12,
                 nav: true,
                 dots: false,
                 autoplay: false, // Tắt tự động chạy để người dùng tự xem rank
                 responsive: {
-                    0: { items: 2 },
-                    600: { items: 3 },
-                    1000: { items: 5 }
+                    0: { items: 1.35 },
+                    600: { items: 2.8 },
+                    1000: { items: 6.2 }
                 }
             });
         }, 100);

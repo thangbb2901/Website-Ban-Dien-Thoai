@@ -269,6 +269,31 @@ form.input-search:focus-within {
     cursor: pointer;
 }
 
+.autocomplete-history-title {
+    padding: 10px 14px 6px;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: default;
+    border-bottom: none;
+}
+
+.autocomplete-history-item {
+    position: relative;
+    padding-left: 34px !important;
+}
+
+.autocomplete-history-item::before {
+    content: "⟳";
+    position: absolute;
+    left: 14px;
+    top: 12px;
+    color: #f59e0b;
+    font-weight: 700;
+}
+
 .autocomplete-items div:last-child {
     border-bottom: none;
 }

@@ -44,6 +44,16 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/metrics', timeout=5)\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     networks:
       # CHỈ cho phép Flask nằm ở mảng mạng ẩn (backend)
       - backend-network
@@ -64,7 +74,7 @@ services:
       - ./ssl:/etc/nginx/ssl
     depends_on:
       web:
-        condition: service_started
+        condition: service_healthy
     networks:
       # Nginx có 2 "card mạng", 1 đối mặt Internet, 1 giao tiếp với backend
       - frontend-network

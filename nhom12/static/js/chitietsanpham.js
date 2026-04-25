@@ -4,7 +4,34 @@ var nameProduct, maProduct, sanPhamHienTai; // Biến toàn cục
 const HOME_RECENTLY_VIEWED_KEY = 'homeRecentlyViewedProducts';
 let quickCheckoutProduct = null;
 
-function getCheckoutUnitPrice(product) {
+function muaNgaySanPham() {
+    if (!sanPhamHienTai) {
+        if (typeof addAlertBox === "function") addAlertBox('Không tìm thấy thông tin sản phẩm.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    const user = getCurrentUser();
+    if (!user) {
+        if (typeof addAlertBox === "function") addAlertBox('Bạn cần đăng nhập để mua hàng!', '#ff8c00', '#000', 3000, 'small');
+        if (typeof showTaiKhoan === "function") showTaiKhoan(true);
+        return;
+    }
+    if (user.off) {
+        if (typeof addAlertBox === "function") addAlertBox('Tài khoản của bạn hiện đang bị khóa nên không thể mua hàng!', '#aa0000', '#fff', 10000, 'small');
+        return;
+    }
+
+    const productInStock = Array.isArray(window.list_products) ? timKiemTheoMa(window.list_products, sanPhamHienTai.masp) : null;
+    if (productInStock && Number(productInStock.quantity) <= 0) {
+        if (typeof addAlertBox === "function") addAlertBox(`Sản phẩm ${sanPhamHienTai.name} đã hết hàng!`, '#ff0000', '#fff', 3500, 'small');
+        return;
+    }
+
+    quickCheckoutProduct = sanPhamHienTai;
+    openQuickCheckout();
+}
+
+function getQuickCheckoutUnitPrice(product) {
     if (!product) return 0;
     const promoNameLower = (product.promo && product.promo.name) ? product.promo.name.toLowerCase() : '';
     const basePrice = stringToNum(product.price);
@@ -23,8 +50,7 @@ function updateQuickCheckoutSummary() {
     if (!quickCheckoutProduct || !nameEl || !quantityEl || !totalEl) return;
 
     const quantity = Math.max(1, Number(quantityInput ? quantityInput.value : 1) || 1);
-    const unitPrice = getCheckoutUnitPrice(quickCheckoutProduct);
-    const total = unitPrice * quantity;
+    const total = getQuickCheckoutUnitPrice(quickCheckoutProduct) * quantity;
 
     nameEl.textContent = quickCheckoutProduct.name || '--';
     quantityEl.textContent = quantity;
@@ -50,26 +76,23 @@ function hienThiChiTietThanhToanQuick() {
 async function openQuickCheckout() {
     const user = getCurrentUser();
     if (!user) {
-        if (typeof addAlertBox === "function") addAlertBox('Vui lòng đăng nhập để thanh toán!', '#ff0000', '#fff', 5000);
+        if (typeof addAlertBox === "function") addAlertBox('Bạn cần đăng nhập để mua hàng!', '#ff8c00', '#000', 3000, 'small');
         if (typeof showTaiKhoan === "function") showTaiKhoan(true);
         return;
     }
     if (user.off) {
-        if (typeof addAlertBox === "function") addAlertBox('Tài khoản của bạn đã bị khóa bởi Admin.', '#aa0000', '#fff', 10000);
-        return;
-    }
-    if (!sanPhamHienTai) {
-        if (typeof addAlertBox === "function") addAlertBox('Không tìm thấy thông tin sản phẩm.', '#ff0000', '#fff', 4000);
+        if (typeof addAlertBox === "function") addAlertBox('Tài khoản của bạn hiện đang bị khóa nên không thể mua hàng!', '#aa0000', '#fff', 10000, 'small');
         return;
     }
 
-    const stock = Number(sanPhamHienTai.quantity) || 0;
+    if (!quickCheckoutProduct) return;
+
+    const stock = Number(quickCheckoutProduct.quantity) || 0;
     if (stock <= 0) {
-        if (typeof addAlertBox === "function") addAlertBox('Sản phẩm này đã hết hàng.', '#ff0000', '#fff', 4000);
+        if (typeof addAlertBox === "function") addAlertBox(`Sản phẩm ${quickCheckoutProduct.name} đã hết hàng!`, '#ff0000', '#fff', 3500, 'small');
         return;
     }
 
-    quickCheckoutProduct = sanPhamHienTai;
     const modal = document.getElementById('quickCheckoutForm');
     if (!modal) return;
 
@@ -77,18 +100,18 @@ async function openQuickCheckout() {
     document.body.style.overflow = 'hidden';
 
     const fullNameInput = modal.querySelector('input[name="fullName"]');
+    const phoneInput = modal.querySelector('input[name="phone"]');
     const emailInput = modal.querySelector('input[name="email"]');
     const streetInput = modal.querySelector('input[name="street"]');
-    const phoneInput = modal.querySelector('input[name="phone"]');
     const quantityInput = modal.querySelector('input[name="quantity"]');
 
     if (fullNameInput && user.ho && user.ten) fullNameInput.value = `${user.ho} ${user.ten}`;
     if (emailInput && user.email) emailInput.value = user.email;
+    if (phoneInput && user.phone) phoneInput.value = user.phone;
     if (streetInput && user.address) {
         const parts = user.address.split(', ').map(p => p.trim());
         if (parts.length >= 1) streetInput.value = parts[0];
     }
-    if (phoneInput && user.phone) phoneInput.value = user.phone;
     if (quantityInput) {
         quantityInput.max = String(stock);
         quantityInput.value = 1;
@@ -213,7 +236,7 @@ async function submitQuickCheckout(form) {
     }
 
     const diaChiNhan = `${streetInput}, ${wardText}, ${districtText}, ${provinceText}`;
-    const unitPrice = getCheckoutUnitPrice(quickCheckoutProduct);
+    const unitPrice = getQuickCheckoutUnitPrice(quickCheckoutProduct);
     const orderData = {
         username: user.username,
         products: [{
