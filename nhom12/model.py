@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import secrets
-import shutil
 import time
 import uuid
 from collections.abc import Mapping
@@ -15,7 +14,6 @@ from werkzeug.security import generate_password_hash
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(BASE_DIR, 'static', 'img'))
 
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT', '3306'))
