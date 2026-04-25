@@ -11,7 +11,7 @@
 
 .banner .owl-carousel {
     height: clamp(170px, 24vw, 320px);
-    background: #fff;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
     border: 1px solid var(--tgdd-border);
     border-radius: 14px;
     overflow: hidden;
@@ -42,8 +42,9 @@
 
 .banner .item img {
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center center;
+    background: transparent;
 }
 
 .banner .owl-dots {
