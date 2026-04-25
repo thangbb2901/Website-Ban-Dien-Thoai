@@ -139,6 +139,8 @@ def test_session():
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(BASE_DIR, 'phone_store_uploads'))
 LEGACY_UPLOAD_ROOT = os.environ.get('PHONE_STORE_LEGACY_UPLOAD_ROOT', os.path.join(os.path.expanduser('~'), 'phone_store_uploads'))
+STATIC_PRODUCT_FOLDER = os.path.join(BASE_DIR, 'static', 'img', 'products')
+STATIC_BANNER_FOLDER = os.path.join(BASE_DIR, 'static', 'img', 'banners')
 PRODUCT_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, 'products')
 BANNER_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, 'banners')
 LEGACY_PRODUCT_UPLOAD_FOLDER = os.path.join(LEGACY_UPLOAD_ROOT, 'products')
@@ -206,6 +208,10 @@ def product_media(filename):
         filename,
     )
     if not file_path:
+        static_candidate = os.path.join(STATIC_PRODUCT_FOLDER, normalize_stored_filename(filename))
+        if os.path.exists(static_candidate):
+            file_path = static_candidate
+    if not file_path:
         return abort(404)
     return send_from_directory(os.path.dirname(file_path), os.path.basename(file_path))
 
@@ -217,6 +223,10 @@ def banner_media(filename):
         LEGACY_BANNER_UPLOAD_FOLDER,
         filename,
     )
+    if not file_path:
+        static_candidate = os.path.join(STATIC_BANNER_FOLDER, normalize_stored_filename(filename))
+        if os.path.exists(static_candidate):
+            file_path = static_candidate
     if not file_path:
         return abort(404)
     return send_from_directory(os.path.dirname(file_path), os.path.basename(file_path))
