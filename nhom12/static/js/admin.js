@@ -784,13 +784,23 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
         } catch (e) { return ""; }
     }
 
+    function normalizeText(text) {
+        return String(text || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[:]/g, '')
+            .trim()
+            .toLowerCase();
+    }
+
     function getValueByLabel(labelKeyword, inputSelector = 'input', isSelect = false) {
+        const normalizedKeyword = normalizeText(labelKeyword);
         for (const tr of trs) {
             const labelCell = tr.cells && tr.cells[0] ? tr.cells[0] : null;
             const valueCell = tr.cells && tr.cells[1] ? tr.cells[1] : null;
             if (!labelCell || !valueCell) continue;
-            const labelText = (labelCell.textContent || '').trim().toLowerCase();
-            if (!labelText.includes(labelKeyword.toLowerCase())) continue;
+            const labelText = normalizeText(labelCell.textContent || '');
+            if (!labelText.includes(normalizedKeyword)) continue;
             const element = valueCell.querySelector(inputSelector);
             if (!element) return "";
             return isSelect ? element.value : element.value.trim();
@@ -809,16 +819,16 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
 
     // === BẮT ĐẦU PHẦN SỬA LỖI CHỈ SỐ ===
     var detail = {};
-    detail.screen = getValueByLabel('Màn hình') || getValueFromInput(11);
-    detail.os = getValueByLabel('Hệ điều hành') || getValueFromInput(12);
-    detail.camara = getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(13);
-    detail.camaraFront = getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(14);
-    detail.cpu = getValueByLabel('CPU') || getValueFromInput(15);
-    detail.ram = getValueByLabel('RAM') || getValueFromInput(16);
-    detail.rom = getValueByLabel('Bộ nhớ trong') || getValueFromInput(17);
-    detail.microUSB = getValueByLabel('Thẻ nhớ') || getValueFromInput(18);
-    detail.sim = getValueByLabel('SIM') || getValueFromInput(19);
-    detail.battery = getValueByLabel('Pin') || getValueFromInput(20);
+    detail.screen = getValueByLabel('Màn hình') || getValueFromInput(12);
+    detail.os = getValueByLabel('Hệ điều hành') || getValueFromInput(13);
+    detail.camara = getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(14);
+    detail.camaraFront = getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(15);
+    detail.cpu = getValueByLabel('CPU') || getValueFromInput(16);
+    detail.ram = getValueByLabel('RAM') || getValueFromInput(17);
+    detail.rom = getValueByLabel('Bộ nhớ trong') || getValueFromInput(18);
+    detail.microUSB = getValueByLabel('Thẻ nhớ') || getValueFromInput(19);
+    detail.sim = getValueByLabel('SIM') || getValueFromInput(20);
+    detail.battery = getValueByLabel('Pin') || getValueFromInput(21);
 
     const productData = {
         name: name,
