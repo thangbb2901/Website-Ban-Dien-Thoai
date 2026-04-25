@@ -897,9 +897,10 @@ async function loadBanners() {
         // ----> PHẦN QUAN TRỌNG: KHỞI TẠO LẠI OWL CAROUSEL <----
         // Mã này chỉ chạy sau khi các banner đã được thêm vào HTML
         owlContainer.owlCarousel({
-            items: 1.5,
-            margin: 100,
-            center: true,
+            items: 1,
+            margin: 24,
+            center: false,
+            stagePadding: 0,
             loop: activeBanners.length > 1, // Chỉ lặp (loop) khi có nhiều hơn 1 banner
             smartSpeed: 450,
             autoplay: true,
