@@ -15,6 +15,7 @@ from werkzeug.security import generate_password_hash
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(os.path.expanduser('~'), 'phone_store_uploads'))
 
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT', '3306'))
@@ -202,9 +203,15 @@ def product_row_to_dict(row):
     if row is None:
         return None
     img_filename = row["img"]
+    if not img_filename or img_filename == 'default.png':
+        img_value = '/static/img/default.png'
+    elif str(img_filename).startswith(('http://', 'https://', '/')):
+        img_value = img_filename
+    else:
+        img_value = f"/media/products/{img_filename}"
     return {
         "masp": row["masp"], "name": row["name"], "company": row["company"],
-        "img": img_filename,
+        "img": img_value,
         "price": row["price"], "star": row["star"], "rateCount": row["rateCount"],
         "promo": {"name": row["promo_name"], "value": row["promo_value"]},
         "detail": {
@@ -255,7 +262,7 @@ def banner_row_to_dict(row):
         "display_order": row["display_order"],
         "uploaded_at": row["uploaded_at"],
         "banner_type": row["banner_type"] if "banner_type" in row.keys() else "hero",
-        "image_url": f"/static/img/banners/{row['filename']}"
+        "image_url": f"/media/banners/{row['filename']}"
     }
 
 

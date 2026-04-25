@@ -635,10 +635,10 @@ async function addTableProducts() {
     let productsData = [];
     try {
         productsData = await callAPI(`/products`);
-        // Xử lý lại đường dẫn ảnh nếu API không trả về đường dẫn tuyệt đối /static/...
+        // Chỉ nối lại path cho dữ liệu cũ còn lưu tên file trần.
         if (Array.isArray(productsData)) {
             productsData = productsData.map(p => {
-                if (p.img && !p.img.startsWith('/static/') && !p.img.startsWith('http')) {
+                if (p.img && !p.img.startsWith('/') && !p.img.startsWith('http')) {
                     let imageName = p.img.includes('/') ? p.img.split('/').pop() : p.img;
                     p.img = `/static/img/products/${imageName}`;
                 } else if (p.img && p.img.startsWith('img/products')) { // Xử lý cấu trúc cũ
@@ -1002,7 +1002,7 @@ async function addKhungSuaSanPham(masp) {
 
     // SỬA ĐỔI: Đường dẫn ảnh mặc định
     let imgSrcToDisplay = productToEdit.img || '/static/img/default.png';
-    if (productToEdit.img && !productToEdit.img.startsWith('/static/') && !productToEdit.img.startsWith('http')) {
+    if (productToEdit.img && !productToEdit.img.startsWith('/') && !productToEdit.img.startsWith('http')) {
         let imageName = productToEdit.img.includes('/') ? productToEdit.img.split('/').pop() : productToEdit.img;
         imgSrcToDisplay = `/static/img/products/${imageName}`;
     }

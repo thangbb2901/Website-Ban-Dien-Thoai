@@ -1038,7 +1038,7 @@ async function loadTopProducts() {
             <div class="top-products-slider owl-carousel owl-theme" id="top-products-carousel">`;
 
         topProducts.forEach((sp, idx) => {
-            let imgSrc = sp.img && !sp.img.startsWith('http') ? `/static/img/products/${sp.img}` : sp.img;
+            let imgSrc = sp.img && !sp.img.startsWith('http') && !sp.img.startsWith('/') ? `/static/img/products/${sp.img}` : sp.img;
             let priceNum = Number(String(sp.price).replace(/\D/g, ''));
             let detailLink = `/chitietsanpham?masp=${sp.masp}`;
 

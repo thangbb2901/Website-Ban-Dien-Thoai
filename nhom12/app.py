@@ -4,7 +4,7 @@ import uuid
 import base64
 import re
 import mysql.connector
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory, abort
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import logging
@@ -136,21 +136,48 @@ def test_session():
         "all_session_data": dict(session)
     }), 200
 
-# Đường dẫn đến thư mục lưu banner
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-BANNER_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'img', 'banners')
+UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(os.path.expanduser('~'), 'phone_store_uploads'))
+PRODUCT_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, 'products')
+BANNER_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, 'banners')
+app.config['PRODUCT_UPLOAD_FOLDER'] = PRODUCT_UPLOAD_FOLDER
 app.config['BANNER_UPLOAD_FOLDER'] = BANNER_UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 OTP_TTL_SECONDS = 600
 
-# Đảm bảo thư mục banner tồn tại
-if not os.path.exists(BANNER_UPLOAD_FOLDER):
-    os.makedirs(BANNER_UPLOAD_FOLDER)
-    logging.info(f"Đã tạo thư mục {BANNER_UPLOAD_FOLDER}")
+for upload_dir in (UPLOAD_ROOT, PRODUCT_UPLOAD_FOLDER, BANNER_UPLOAD_FOLDER):
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+        logging.info(f"Đã tạo thư mục {upload_dir}")
 
 def allowed_file(filename):
     """Kiểm tra định dạng file ảnh có được phép."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def normalize_stored_filename(value):
+    if not value:
+        return ''
+    normalized = str(value).replace('\\', '/').rstrip('/')
+    return normalized.split('/')[-1]
+
+
+@app.route('/media/products/<path:filename>', methods=['GET'])
+def product_media(filename):
+    safe_name = normalize_stored_filename(filename)
+    file_path = os.path.join(app.config['PRODUCT_UPLOAD_FOLDER'], safe_name)
+    if not safe_name or not os.path.exists(file_path):
+        return abort(404)
+    return send_from_directory(app.config['PRODUCT_UPLOAD_FOLDER'], safe_name)
+
+
+@app.route('/media/banners/<path:filename>', methods=['GET'])
+def banner_media(filename):
+    safe_name = normalize_stored_filename(filename)
+    file_path = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], safe_name)
+    if not safe_name or not os.path.exists(file_path):
+        return abort(404)
+    return send_from_directory(app.config['BANNER_UPLOAD_FOLDER'], safe_name)
 
 @app.before_request
 def check_user_banned():
@@ -548,8 +575,7 @@ def add_product_api():
             original_filename = secure_filename(file.filename)
             filename_prefix = uuid.uuid4().hex[:8]
             final_img_to_save = f"{filename_prefix}_{original_filename}"
-            # Đảm bảo thư mục static/img/products tồn tại
-            product_image_folder = os.path.join(BASE_DIR, 'static', 'img', 'products')
+            product_image_folder = app.config['PRODUCT_UPLOAD_FOLDER']
             if not os.path.exists(product_image_folder):
                 os.makedirs(product_image_folder)
             
@@ -616,8 +642,9 @@ def update_product_api(masp):
             file = request.files['product_image']
             if file and file.filename != '' and allowed_file(file.filename):
                 # Xóa file ảnh cũ nếu nó không phải là ảnh mặc định
-                if current_product['img'] and current_product['img'] != 'default.png':
-                    old_filepath = os.path.join(BASE_DIR, 'static', 'img', 'products', current_product['img'])
+                old_filename = normalize_stored_filename(current_product['img'])
+                if old_filename and old_filename != 'default.png':
+                    old_filepath = os.path.join(app.config['PRODUCT_UPLOAD_FOLDER'], old_filename)
                     if os.path.exists(old_filepath):
                         os.remove(old_filepath)
 
@@ -625,7 +652,7 @@ def update_product_api(masp):
                 original_filename = secure_filename(file.filename)
                 filename_prefix = uuid.uuid4().hex[:8]
                 img_to_save = f"{filename_prefix}_{original_filename}"
-                filepath = os.path.join(BASE_DIR, 'static', 'img', 'products', img_to_save)
+                filepath = os.path.join(app.config['PRODUCT_UPLOAD_FOLDER'], img_to_save)
                 file.save(filepath)
 
         promo_data = json.loads(request.form.get('promo', '{}'))
@@ -1488,7 +1515,7 @@ def update_banner_api(banner_id):
             is_active = is_active_str.lower() == 'true'
 
         new_filename = current_banner['filename']
-        old_filepath = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], current_banner['filename'])
+        old_filepath = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], normalize_stored_filename(current_banner['filename']))
 
         if 'banner_image' in request.files:
             file = request.files['banner_image']
@@ -1544,7 +1571,7 @@ def delete_banner_api(banner_id):
         if not banner_file_row:
             return jsonify({"error": "Banner không tìm thấy"}), 404
 
-        filename_to_delete = banner_file_row['filename']
+        filename_to_delete = normalize_stored_filename(banner_file_row['filename'])
         filepath_to_delete = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], filename_to_delete)
 
         cursor.execute("DELETE FROM banners WHERE banner_id = ?", (banner_id,))

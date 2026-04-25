@@ -37,12 +37,12 @@ function setLocalStorageItem(key, value) {
 // Hàm xử lý đường dẫn ảnh sản phẩm
 function processProductImagePath(product) {
     if (product && product.img) {
-        if (!product.img.startsWith('http') && !product.img.startsWith('/static/')) {
+        if (!product.img.startsWith('http') && !product.img.startsWith('/')) {
             // Nếu img chỉ là tên file hoặc đường dẫn tương đối cũ (ví dụ: "img/products/...")
             let imageName = product.img.includes('/') ? product.img.split('/').pop() : product.img;
             product.img = `/static/img/products/${imageName}`;
         }
-        // Nếu đã là URL tuyệt đối hoặc đã đúng dạng /static/ thì giữ nguyên
+        // Nếu đã là URL tuyệt đối hoặc path nội bộ bắt đầu bằng / thì giữ nguyên
     }
     return product;
 }
