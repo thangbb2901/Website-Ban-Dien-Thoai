@@ -808,9 +808,15 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
         return "";
     }
 
-    var name = getValueFromInput(2);
+    function getValueById(localId, fallback = "") {
+        const el = khung.querySelector(`#${localId}`);
+        if (!el) return fallback;
+        return (el.value || '').trim();
+    }
+
+    var name = isEditMode ? getValueById('edit_name', getValueFromInput(2)) : getValueFromInput(2);
     var company = getValueFromInput(3, 'select', true);
-    var priceString = getValueFromInput(5);
+    var priceString = isEditMode ? getValueById('edit_price', getValueFromInput(5)) : getValueFromInput(5);
 
     if (!name || !company || !priceString) {
         addAlertBox('Tên sản phẩm, hãng, và giá không được để trống.', '#f55', '#fff', 4000);
@@ -819,29 +825,29 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
 
     // === BẮT ĐẦU PHẦN SỬA LỖI CHỈ SỐ ===
     var detail = {};
-    detail.screen = getValueByLabel('Màn hình') || getValueFromInput(12);
-    detail.os = getValueByLabel('Hệ điều hành') || getValueFromInput(13);
-    detail.camara = getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(14);
-    detail.camaraFront = getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(15);
-    detail.cpu = getValueByLabel('CPU') || getValueFromInput(16);
-    detail.ram = getValueByLabel('RAM') || getValueFromInput(17);
-    detail.rom = getValueByLabel('Bộ nhớ trong') || getValueFromInput(18);
-    detail.microUSB = getValueByLabel('Thẻ nhớ') || getValueFromInput(19);
-    detail.sim = getValueByLabel('SIM') || getValueFromInput(20);
-    detail.battery = getValueByLabel('Pin') || getValueFromInput(21);
+    detail.screen = isEditMode ? getValueById('edit_detail_screen', getValueByLabel('Màn hình') || getValueFromInput(12)) : (getValueByLabel('Màn hình') || getValueFromInput(12));
+    detail.os = isEditMode ? getValueById('edit_detail_os', getValueByLabel('Hệ điều hành') || getValueFromInput(13)) : (getValueByLabel('Hệ điều hành') || getValueFromInput(13));
+    detail.camara = isEditMode ? getValueById('edit_detail_camara', getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(14)) : (getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(14));
+    detail.camaraFront = isEditMode ? getValueById('edit_detail_camaraFront', getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(15)) : (getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(15));
+    detail.cpu = isEditMode ? getValueById('edit_detail_cpu', getValueByLabel('CPU') || getValueFromInput(16)) : (getValueByLabel('CPU') || getValueFromInput(16));
+    detail.ram = isEditMode ? getValueById('edit_detail_ram', getValueByLabel('RAM') || getValueFromInput(17)) : (getValueByLabel('RAM') || getValueFromInput(17));
+    detail.rom = isEditMode ? getValueById('edit_detail_rom', getValueByLabel('Bộ nhớ trong') || getValueFromInput(18)) : (getValueByLabel('Bộ nhớ trong') || getValueFromInput(18));
+    detail.microUSB = isEditMode ? getValueById('edit_detail_memory', getValueByLabel('Thẻ nhớ') || getValueFromInput(19)) : (getValueByLabel('Thẻ nhớ') || getValueFromInput(19));
+    detail.sim = isEditMode ? getValueById('edit_detail_sim', getValueByLabel('SIM') || getValueFromInput(20)) : (getValueByLabel('SIM') || getValueFromInput(20));
+    detail.battery = isEditMode ? getValueById('edit_detail_battery', getValueByLabel('Pin') || getValueFromInput(21)) : (getValueByLabel('Pin') || getValueFromInput(21));
 
     const productData = {
         name: name,
         company: company,
         img_file: imageFile, // Thêm file ảnh để gửi đi
         price: priceString,
-        star: getValueFromInput(6, 'input[type="number"]') || 0,
-        rateCount: getValueFromInput(7, 'input[type="number"]') || 0,
+        star: isEditMode ? getValueById('edit_star', getValueFromInput(6, 'input[type="number"]')) || 0 : getValueFromInput(6, 'input[type="number"]') || 0,
+        rateCount: isEditMode ? getValueById('edit_rateCount', getValueFromInput(7, 'input[type="number"]')) || 0 : getValueFromInput(7, 'input[type="number"]') || 0,
         promo: {
             "name": getValueFromInput(8, 'select', true),
-            "value": getValueFromInput(9)
+            "value": isEditMode ? getValueById('edit_promo_value', getValueFromInput(9)) : getValueFromInput(9)
         },
-        quantity: getValueFromInput(10, 'input[type="number"]') || 0,
+        quantity: isEditMode ? getValueById('edit_quantity', getValueFromInput(10, 'input[type="number"]')) || 0 : getValueFromInput(10, 'input[type="number"]') || 0,
         detail: detail
     };
     // === KẾT THÚC PHẦN SỬA LỖI CHỈ SỐ ===
@@ -999,7 +1005,7 @@ async function addKhungSuaSanPham(masp) {
     <table class="overlayTable table-outline table-content table-header">
         <tr> <th colspan="2">Sửa sản phẩm: ${escAttr(productToEdit.name)}</th> </tr>
         <tr> <td>Mã sản phẩm:</td> <td><input type="text" value="${escAttr(productToEdit.masp)}" data-original-masp="${escAttr(productToEdit.masp)}" disabled></td> </tr>
-        <tr> <td>Tên sản phẩm:</td> <td><input type="text" value="${escAttr(productToEdit.name)}"></td> </tr>
+        <tr> <td>Tên sản phẩm:</td> <td><input type="text" id="edit_name" value="${escAttr(productToEdit.name)}"></td> </tr>
         <tr> <td>Hãng:</td> <td> <select name="chonCompany">`;
 
     var companyOptions = ["Apple", "Samsung", "Oppo", "Nokia", "Huawei", "Xiaomi", "Realme", "Vivo", "Philips", "Mobell", "Mobiistar", "Itel", "Coolpad", "HTC", "Motorola", "Khác"];
@@ -1022,9 +1028,9 @@ async function addKhungSuaSanPham(masp) {
                 <input type="file" accept="image/*" onchange="capNhatAnhSanPham(this.files, 'anhDaiDienSanPhamSua')">
              </td>
         </tr>
-        <tr> <td>Giá tiền (số):</td> <td><input type="number" value="${escAttr(stringToNum(productToEdit.price))}"></td> </tr>
-        <tr> <td>Số sao (0-5):</td> <td><input type="number" value="${escAttr(productToEdit.star || 0)}" min="0" max="5"></td> </tr>
-        <tr> <td>Số đánh giá:</td> <td><input type="number" value="${escAttr(productToEdit.rateCount || 0)}" min="0"></td> </tr>
+        <tr> <td>Giá tiền (số):</td> <td><input type="number" id="edit_price" value="${escAttr(stringToNum(productToEdit.price))}"></td> </tr>
+        <tr> <td>Số sao (0-5):</td> <td><input type="number" id="edit_star" value="${escAttr(productToEdit.star || 0)}" min="0" max="5"></td> </tr>
+        <tr> <td>Số đánh giá:</td> <td><input type="number" id="edit_rateCount" value="${escAttr(productToEdit.rateCount || 0)}" min="0"></td> </tr>
         <tr> <td>Khuyến mãi:</td> <td> <select>
             <option value="">Không</option>
             <option value="tragop" ${promo.name == 'tragop' ? 'selected' : ''}>Trả góp</option>
@@ -1032,19 +1038,19 @@ async function addKhungSuaSanPham(masp) {
             <option value="giareonline" ${promo.name == 'giareonline' ? 'selected' : ''}>Giá rẻ online</option>
             <option value="moiramat" ${promo.name == 'moiramat' ? 'selected' : ''}>Mới ra mắt</option>
         </select> </td> </tr>
-        <tr> <td>Giá trị khuyến mãi:</td> <td><input type="text" value="${escAttr(promo.value || '')}"></td> </tr>
-        <tr> <td>Số lượng kho:</td> <td><input type="number" value="${escAttr(productToEdit.quantity || 0)}" min="0"></td> </tr>
+        <tr> <td>Giá trị khuyến mãi:</td> <td><input type="text" id="edit_promo_value" value="${escAttr(promo.value || '')}"></td> </tr>
+        <tr> <td>Số lượng kho:</td> <td><input type="number" id="edit_quantity" value="${escAttr(productToEdit.quantity || 0)}" min="0"></td> </tr>
         <tr> <th colspan="2">Thông số kĩ thuật</th> </tr>
-        <tr> <td>Màn hình:</td> <td><input type="text" value="${escAttr(detail.screen || '')}"></td> </tr>
-        <tr> <td>Hệ điều hành:</td> <td><input type="text" value="${escAttr(detail.os || '')}"></td> </tr>
-        <tr> <td>Camera sau:</td> <td><input type="text" value="${escAttr(detail.camara || '')}"></td> </tr>
-        <tr> <td>Camera trước:</td> <td><input type="text" value="${escAttr(detail.camaraFront || '')}"></td> </tr>
-        <tr> <td>CPU:</td> <td><input type="text" value="${escAttr(detail.cpu || '')}"></td> </tr>
-        <tr> <td>RAM:</td> <td><input type="text" value="${escAttr(detail.ram || '')}"></td> </tr>
-        <tr> <td>Bộ nhớ trong:</td> <td><input type="text" value="${escAttr(detail.rom || '')}"></td> </tr>
-        <tr> <td>Thẻ nhớ:</td> <td><input type="text" value="${escAttr(detail.microUSB || detail.memoryStick || '')}"></td> </tr>
-        <tr> <td>SIM:</td> <td><input type="text" value="${escAttr(detail.sim || '')}"></td> </tr>
-        <tr> <td>Dung lượng Pin:</td> <td><input type="text" value="${escAttr(detail.battery || '')}"></td> </tr>
+        <tr> <td>Màn hình:</td> <td><input type="text" id="edit_detail_screen" value="${escAttr(detail.screen || '')}"></td> </tr>
+        <tr> <td>Hệ điều hành:</td> <td><input type="text" id="edit_detail_os" value="${escAttr(detail.os || '')}"></td> </tr>
+        <tr> <td>Camera sau:</td> <td><input type="text" id="edit_detail_camara" value="${escAttr(detail.camara || '')}"></td> </tr>
+        <tr> <td>Camera trước:</td> <td><input type="text" id="edit_detail_camaraFront" value="${escAttr(detail.camaraFront || '')}"></td> </tr>
+        <tr> <td>CPU:</td> <td><input type="text" id="edit_detail_cpu" value="${escAttr(detail.cpu || '')}"></td> </tr>
+        <tr> <td>RAM:</td> <td><input type="text" id="edit_detail_ram" value="${escAttr(detail.ram || '')}"></td> </tr>
+        <tr> <td>Bộ nhớ trong:</td> <td><input type="text" id="edit_detail_rom" value="${escAttr(detail.rom || '')}"></td> </tr>
+        <tr> <td>Thẻ nhớ:</td> <td><input type="text" id="edit_detail_memory" value="${escAttr(detail.microUSB || detail.memoryStick || '')}"></td> </tr>
+        <tr> <td>SIM:</td> <td><input type="text" id="edit_detail_sim" value="${escAttr(detail.sim || '')}"></td> </tr>
+        <tr> <td>Dung lượng Pin:</td> <td><input type="text" id="edit_detail_battery" value="${escAttr(detail.battery || '')}"></td> </tr>
         <tr> <td colspan="2" class="table-footer"><button onclick="suaSanPham('${productToEdit.masp}')">LƯU</button></td> </tr>
     </table>`;
 
