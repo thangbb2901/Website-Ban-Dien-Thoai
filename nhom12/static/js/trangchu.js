@@ -897,16 +897,30 @@ async function loadBanners() {
         // ----> PHẦN QUAN TRỌNG: KHỞI TẠO LẠI OWL CAROUSEL <----
         // Mã này chỉ chạy sau khi các banner đã được thêm vào HTML
         owlContainer.owlCarousel({
-            items: 1.2,
-            margin: 18,
+            items: 1,
+            margin: 12,
             center: true,
-            stagePadding: 0,
+            stagePadding: 180,
             loop: activeBanners.length > 1, // Chỉ lặp (loop) khi có nhiều hơn 1 banner
             smartSpeed: 450,
             autoplay: true,
             autoplayTimeout: 3500,
             nav: false, // Tắt nút điều hướng mặc định nếu muốn
-            dots: true  // Bật dấu chấm điều hướng
+            dots: true,  // Bật dấu chấm điều hướng
+            responsive: {
+                0: {
+                    stagePadding: 20,
+                    margin: 8
+                },
+                768: {
+                    stagePadding: 110,
+                    margin: 10
+                },
+                1200: {
+                    stagePadding: 180,
+                    margin: 12
+                }
+            }
         });
 
     } catch (error) {
