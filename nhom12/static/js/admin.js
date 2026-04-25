@@ -962,7 +962,30 @@ async function addKhungSuaSanPham(masp) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    const detail = productToEdit.detail || {};
+    function normalizeDetailForAdmin(rawDetail = {}) {
+        const detailData = { ...rawDetail };
+
+        // Repair older misaligned detail rows where every field shifted down by one.
+        if (!detailData.screen && detailData.os) {
+            return {
+                screen: detailData.os || '',
+                os: detailData.camara || '',
+                camara: detailData.camaraFront || '',
+                camaraFront: detailData.cpu || '',
+                cpu: detailData.ram || '',
+                ram: detailData.rom || '',
+                rom: detailData.microUSB || detailData.memoryStick || '',
+                microUSB: detailData.sim || '',
+                memoryStick: detailData.sim || '',
+                sim: detailData.battery || '',
+                battery: ''
+            };
+        }
+
+        return detailData;
+    }
+
+    const detail = normalizeDetailForAdmin(productToEdit.detail || {});
     const promo = productToEdit.promo || {};
 
     var s = `<span class="close" onclick="this.parentElement.style.transform = 'scale(0)'; previewSrc = null;">&times;</span>
