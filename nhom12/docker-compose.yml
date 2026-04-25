@@ -41,6 +41,7 @@ services:
       - DATABASE_URL=mysql://phone_user:phone_password@mysql:3306/phone_store
     volumes:
       - .:/app
+      - ./phone_store_uploads:/app/phone_store_uploads
     depends_on:
       mysql:
         condition: service_healthy
@@ -60,6 +61,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./static:/app/static
+      - ./phone_store_uploads:/app/phone_store_uploads
       # Mount thư mục chứa chứng chỉ truy cập an toàn
       - ./ssl:/etc/nginx/ssl
     depends_on:

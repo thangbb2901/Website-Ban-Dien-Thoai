@@ -137,9 +137,12 @@ def test_session():
     }), 200
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(os.path.expanduser('~'), 'phone_store_uploads'))
+UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(BASE_DIR, 'phone_store_uploads'))
+LEGACY_UPLOAD_ROOT = os.environ.get('PHONE_STORE_LEGACY_UPLOAD_ROOT', os.path.join(os.path.expanduser('~'), 'phone_store_uploads'))
 PRODUCT_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, 'products')
 BANNER_UPLOAD_FOLDER = os.path.join(UPLOAD_ROOT, 'banners')
+LEGACY_PRODUCT_UPLOAD_FOLDER = os.path.join(LEGACY_UPLOAD_ROOT, 'products')
+LEGACY_BANNER_UPLOAD_FOLDER = os.path.join(LEGACY_UPLOAD_ROOT, 'banners')
 app.config['PRODUCT_UPLOAD_FOLDER'] = PRODUCT_UPLOAD_FOLDER
 app.config['BANNER_UPLOAD_FOLDER'] = BANNER_UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -162,22 +165,61 @@ def normalize_stored_filename(value):
     return normalized.split('/')[-1]
 
 
+def resolve_uploaded_path(primary_folder, legacy_folder, filename):
+    safe_name = normalize_stored_filename(filename)
+    if not safe_name:
+        return None
+
+    for folder in (primary_folder, legacy_folder):
+        if not folder:
+            continue
+        candidate = os.path.join(folder, safe_name)
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
+def remove_uploaded_file(*folders_and_filename):
+    *folders, filename = folders_and_filename
+    safe_name = normalize_stored_filename(filename)
+    if not safe_name:
+        return
+
+    seen = set()
+    for folder in folders:
+        if not folder or folder in seen:
+            continue
+        seen.add(folder)
+        candidate = os.path.join(folder, safe_name)
+        if os.path.exists(candidate):
+            try:
+                os.remove(candidate)
+            except OSError as exc:
+                logging.warning("Không thể xóa file %s: %s", candidate, exc)
+
+
 @app.route('/media/products/<path:filename>', methods=['GET'])
 def product_media(filename):
-    safe_name = normalize_stored_filename(filename)
-    file_path = os.path.join(app.config['PRODUCT_UPLOAD_FOLDER'], safe_name)
-    if not safe_name or not os.path.exists(file_path):
+    file_path = resolve_uploaded_path(
+        app.config['PRODUCT_UPLOAD_FOLDER'],
+        LEGACY_PRODUCT_UPLOAD_FOLDER,
+        filename,
+    )
+    if not file_path:
         return abort(404)
-    return send_from_directory(app.config['PRODUCT_UPLOAD_FOLDER'], safe_name)
+    return send_from_directory(os.path.dirname(file_path), os.path.basename(file_path))
 
 
 @app.route('/media/banners/<path:filename>', methods=['GET'])
 def banner_media(filename):
-    safe_name = normalize_stored_filename(filename)
-    file_path = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], safe_name)
-    if not safe_name or not os.path.exists(file_path):
+    file_path = resolve_uploaded_path(
+        app.config['BANNER_UPLOAD_FOLDER'],
+        LEGACY_BANNER_UPLOAD_FOLDER,
+        filename,
+    )
+    if not file_path:
         return abort(404)
-    return send_from_directory(app.config['BANNER_UPLOAD_FOLDER'], safe_name)
+    return send_from_directory(os.path.dirname(file_path), os.path.basename(file_path))
 
 @app.before_request
 def check_user_banned():
@@ -644,9 +686,11 @@ def update_product_api(masp):
                 # Xóa file ảnh cũ nếu nó không phải là ảnh mặc định
                 old_filename = normalize_stored_filename(current_product['img'])
                 if old_filename and old_filename != 'default.png':
-                    old_filepath = os.path.join(app.config['PRODUCT_UPLOAD_FOLDER'], old_filename)
-                    if os.path.exists(old_filepath):
-                        os.remove(old_filepath)
+                    remove_uploaded_file(
+                        app.config['PRODUCT_UPLOAD_FOLDER'],
+                        LEGACY_PRODUCT_UPLOAD_FOLDER,
+                        old_filename,
+                    )
 
                 # Lưu file mới
                 original_filename = secure_filename(file.filename)
@@ -1515,7 +1559,7 @@ def update_banner_api(banner_id):
             is_active = is_active_str.lower() == 'true'
 
         new_filename = current_banner['filename']
-        old_filepath = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], normalize_stored_filename(current_banner['filename']))
+        old_filename = normalize_stored_filename(current_banner['filename'])
 
         if 'banner_image' in request.files:
             file = request.files['banner_image']
@@ -1526,11 +1570,12 @@ def update_banner_api(banner_id):
                 new_filepath = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], new_filename)
 
                 file.save(new_filepath)
-                if os.path.exists(old_filepath) and new_filename != current_banner['filename']:
-                    try:
-                        os.remove(old_filepath)
-                    except OSError as e_os:
-                        logging.warning(f"Không thể xóa file banner cũ {old_filepath}: {e_os}")
+                if new_filename != current_banner['filename']:
+                    remove_uploaded_file(
+                        app.config['BANNER_UPLOAD_FOLDER'],
+                        LEGACY_BANNER_UPLOAD_FOLDER,
+                        old_filename,
+                    )
             elif file and file.filename != '':
                 return jsonify({"error": "Loại file không được phép cho banner mới"}), 400
 
@@ -1572,17 +1617,15 @@ def delete_banner_api(banner_id):
             return jsonify({"error": "Banner không tìm thấy"}), 404
 
         filename_to_delete = normalize_stored_filename(banner_file_row['filename'])
-        filepath_to_delete = os.path.join(app.config['BANNER_UPLOAD_FOLDER'], filename_to_delete)
 
         cursor.execute("DELETE FROM banners WHERE banner_id = ?", (banner_id,))
         conn.commit()
 
-        if os.path.exists(filepath_to_delete):
-            try:
-                os.remove(filepath_to_delete)
-                logging.info(f"API: Đã xóa file banner '{filename_to_delete}'")
-            except OSError as e:
-                logging.error(f"API Lỗi khi xóa file banner '{filename_to_delete}': {e}")
+        remove_uploaded_file(
+            app.config['BANNER_UPLOAD_FOLDER'],
+            LEGACY_BANNER_UPLOAD_FOLDER,
+            filename_to_delete,
+        )
 
         logging.info(f"API: Đã xóa banner ID {banner_id} khỏi DB")
         return jsonify({"message": "Xóa banner thành công"}), 200

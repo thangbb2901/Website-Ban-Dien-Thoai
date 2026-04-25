@@ -15,7 +15,7 @@ from werkzeug.security import generate_password_hash
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(os.path.expanduser('~'), 'phone_store_uploads'))
+UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(BASE_DIR, 'phone_store_uploads'))
 
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT', '3306'))

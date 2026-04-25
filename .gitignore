@@ -1,2 +1,4 @@
 __pycache__/
 *.py[cod]
+nhom12/phone_store_uploads/*
+!nhom12/phone_store_uploads/.gitkeep
