@@ -212,17 +212,25 @@ function createChartConfig(title = 'Tiêu đề', charType = 'bar', labels = ['K
 
     if (charType === 'doughnut' || charType === 'pie') {
         options.legend.display = true;
-        options.legend.position = 'bottom';
+        options.legend.position = 'right';
         options.legend.labels = {
             fontColor: '#94a3b8',
-            padding: 20,
+            padding: 14,
             usePointStyle: true
+        };
+        options.layout = {
+            padding: {
+                top: 8,
+                right: 8,
+                bottom: 8,
+                left: 8
+            }
         };
         delete options.scales;
     }
 
     if (charType === 'doughnut') {
-        options.cutoutPercentage = 75;
+        options.cutoutPercentage = 58;
     }
 
     return {

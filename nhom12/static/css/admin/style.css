@@ -246,6 +246,14 @@ header h2:hover {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
+.home .canvasContainer.revenue-chart {
+    min-height: 420px;
+}
+
+.home .canvasContainer.revenue-chart canvas {
+    min-height: 340px;
+}
+
 .home .canvasContainer:hover {
     transform: translateY(-5px);
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
