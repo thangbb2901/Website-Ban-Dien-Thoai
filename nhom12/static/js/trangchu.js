@@ -52,7 +52,9 @@ function initProductResultsSlider() {
     productsContainer.addClass('owl-carousel owl-theme product-results-slider');
 
     productsContainer.owlCarousel({
-        loop: productsContainer.children('li.sanpham').length > 4,
+        // Search/filter results should not use loop because Owl clones items,
+        // which makes the result set look duplicated.
+        loop: false,
         margin: 0,
         nav: true,
         dots: false,
