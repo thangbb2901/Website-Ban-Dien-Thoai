@@ -852,7 +852,7 @@ function filterProductsStar(num) { // Hàm này có vẻ không được gọi, 
 }
 
 function addBanner(img, link) {
-    var newDiv = `<div class='item banner-slide' style="--banner-bg: url('${img}')"><a target='_blank' href='${link}'><img src='${img}' alt='Banner'></a></div>`;
+    var newDiv = `<div class='item banner-slide'><a target='_blank' href='${link}'><img src='${img}' alt='Banner'></a></div>`;
     var bannerContainer = document.querySelector('.owl-carousel'); // Sửa lại selector cho đúng
     if (bannerContainer) bannerContainer.innerHTML += newDiv;
 }
@@ -881,7 +881,7 @@ async function loadBanners() {
         if (activeBanners.length > 0) {
             activeBanners.forEach(banner => {
                 const bannerHTML = `
-                    <div class='item banner-slide' style="--banner-bg: url('${banner.image_url}')">
+                    <div class='item banner-slide'>
                         <a href='${banner.link_url || '#'}' target='_blank'>
                             <img src='${banner.image_url}' alt='${banner.alt_text || 'Banner'}'>
                         </a>
@@ -890,16 +890,16 @@ async function loadBanners() {
             });
         } else {
             // Hiển thị một banner mặc định nếu không có banner nào trong CSDL
-            const defaultBanner = `<div class='item banner-slide' style="--banner-bg: url('/static/img/banners/banner0.gif')"><img src='/static/img/banners/banner0.gif' alt='Banner mặc định'></div>`;
+            const defaultBanner = `<div class='item banner-slide'><img src='/static/img/banners/banner0.gif' alt='Banner mặc định'></div>`;
             owlContainer.append(defaultBanner);
         }
 
         // ----> PHẦN QUAN TRỌNG: KHỞI TẠO LẠI OWL CAROUSEL <----
         // Mã này chỉ chạy sau khi các banner đã được thêm vào HTML
         owlContainer.owlCarousel({
-            items: 1,
-            margin: 24,
-            center: false,
+            items: 1.2,
+            margin: 18,
+            center: true,
             stagePadding: 0,
             loop: activeBanners.length > 1, // Chỉ lặp (loop) khi có nhiều hơn 1 banner
             smartSpeed: 450,
