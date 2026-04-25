@@ -2,6 +2,257 @@
 
 var nameProduct, maProduct, sanPhamHienTai; // Biến toàn cục
 const HOME_RECENTLY_VIEWED_KEY = 'homeRecentlyViewedProducts';
+let quickCheckoutProduct = null;
+
+function getCheckoutUnitPrice(product) {
+    if (!product) return 0;
+    const promoNameLower = (product.promo && product.promo.name) ? product.promo.name.toLowerCase() : '';
+    const basePrice = stringToNum(product.price);
+    if (promoNameLower === 'giareonline' && product.promo && product.promo.value) {
+        return stringToNum(product.promo.value);
+    }
+    return basePrice;
+}
+
+function updateQuickCheckoutSummary() {
+    const nameEl = document.getElementById('quickOrderProductName');
+    const quantityEl = document.getElementById('quickOrderQuantity');
+    const totalEl = document.getElementById('quickOrderTotal');
+    const quantityInput = document.getElementById('quickQuantity');
+
+    if (!quickCheckoutProduct || !nameEl || !quantityEl || !totalEl) return;
+
+    const quantity = Math.max(1, Number(quantityInput ? quantityInput.value : 1) || 1);
+    const unitPrice = getCheckoutUnitPrice(quickCheckoutProduct);
+    const total = unitPrice * quantity;
+
+    nameEl.textContent = quickCheckoutProduct.name || '--';
+    quantityEl.textContent = quantity;
+    totalEl.textContent = `${numToString(total)} ₫`;
+}
+
+function hienThiChiTietThanhToanQuick() {
+    const qrPaymentDiv = document.getElementById('quickQrPaymentDetails');
+    const visaPaymentDiv = document.getElementById('quickVisaPaymentDetails');
+    const selectedMethodElement = document.querySelector('#quickCheckoutForm input[name="paymentMethod"]:checked');
+
+    if (!selectedMethodElement) return;
+    const selectedMethod = selectedMethodElement.value;
+
+    if (qrPaymentDiv) qrPaymentDiv.style.display = (selectedMethod === 'transfer') ? 'block' : 'none';
+    if (visaPaymentDiv) {
+        visaPaymentDiv.style.display = (selectedMethod === 'card') ? 'block' : 'none';
+        const visaInputs = visaPaymentDiv.querySelectorAll('input');
+        visaInputs.forEach(input => input.required = (selectedMethod === 'card'));
+    }
+}
+
+async function openQuickCheckout() {
+    const user = getCurrentUser();
+    if (!user) {
+        if (typeof addAlertBox === "function") addAlertBox('Vui lòng đăng nhập để thanh toán!', '#ff0000', '#fff', 5000);
+        if (typeof showTaiKhoan === "function") showTaiKhoan(true);
+        return;
+    }
+    if (user.off) {
+        if (typeof addAlertBox === "function") addAlertBox('Tài khoản của bạn đã bị khóa bởi Admin.', '#aa0000', '#fff', 10000);
+        return;
+    }
+    if (!sanPhamHienTai) {
+        if (typeof addAlertBox === "function") addAlertBox('Không tìm thấy thông tin sản phẩm.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    const stock = Number(sanPhamHienTai.quantity) || 0;
+    if (stock <= 0) {
+        if (typeof addAlertBox === "function") addAlertBox('Sản phẩm này đã hết hàng.', '#ff0000', '#fff', 4000);
+        return;
+    }
+
+    quickCheckoutProduct = sanPhamHienTai;
+    const modal = document.getElementById('quickCheckoutForm');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    const fullNameInput = modal.querySelector('input[name="fullName"]');
+    const emailInput = modal.querySelector('input[name="email"]');
+    const streetInput = modal.querySelector('input[name="street"]');
+    const phoneInput = modal.querySelector('input[name="phone"]');
+    const quantityInput = modal.querySelector('input[name="quantity"]');
+
+    if (fullNameInput && user.ho && user.ten) fullNameInput.value = `${user.ho} ${user.ten}`;
+    if (emailInput && user.email) emailInput.value = user.email;
+    if (streetInput && user.address) {
+        const parts = user.address.split(', ').map(p => p.trim());
+        if (parts.length >= 1) streetInput.value = parts[0];
+    }
+    if (phoneInput && user.phone) phoneInput.value = user.phone;
+    if (quantityInput) {
+        quantityInput.max = String(stock);
+        quantityInput.value = 1;
+    }
+
+    await loadProvinces('quick');
+    if (user.address) {
+        const parts = user.address.split(', ').map(p => p.trim());
+        if (parts.length >= 4) {
+            const street = parts[0];
+            const wardName = parts[1];
+            const districtName = parts[2];
+            const provinceName = parts[3];
+
+            if (streetInput) streetInput.value = street;
+
+            const provinceSelect = document.getElementById('quickProvince');
+            for (let i = 0; i < provinceSelect.options.length; i++) {
+                if (provinceSelect.options[i].text === provinceName) {
+                    provinceSelect.selectedIndex = i;
+                    await loadDistricts(provinceSelect.value, 'quick');
+                    const districtSelect = document.getElementById('quickDistrict');
+                    for (let j = 0; j < districtSelect.options.length; j++) {
+                        if (districtSelect.options[j].text === districtName) {
+                            districtSelect.selectedIndex = j;
+                            await loadWards(districtSelect.value, 'quick');
+                            const wardSelect = document.getElementById('quickWard');
+                            for (let k = 0; k < wardSelect.options.length; k++) {
+                                if (wardSelect.options[k].text === wardName) {
+                                    wardSelect.selectedIndex = k;
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    hienThiChiTietThanhToanQuick();
+    updateQuickCheckoutSummary();
+}
+
+function closeQuickCheckout() {
+    const modal = document.getElementById('quickCheckoutForm');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+async function submitQuickCheckout(form) {
+    if (!form || !quickCheckoutProduct) return false;
+
+    const user = getCurrentUser();
+    if (!user) {
+        if (typeof addAlertBox === "function") addAlertBox('Vui lòng đăng nhập để thanh toán!', '#ff0000', '#fff', 5000);
+        if (typeof showTaiKhoan === "function") showTaiKhoan(true);
+        return false;
+    }
+    if (user.off) {
+        if (typeof addAlertBox === "function") addAlertBox('Tài khoản của bạn hiện đang bị khóa nên không thể mua hàng!', '#aa0000', '#fff', 10000);
+        return false;
+    }
+
+    const quantityInput = form.elements.quantity;
+    const quantity = Math.max(1, Number(quantityInput ? quantityInput.value : 1) || 1);
+    const stock = Number(quickCheckoutProduct.quantity) || 0;
+    if (quantity > stock) {
+        if (typeof addAlertBox === "function") addAlertBox(`Chỉ còn ${stock} máy trong kho.`, '#ff0000', '#fff', 4000);
+        return false;
+    }
+
+    const tenNguoiNhan = form.elements.fullName.value.trim();
+    const sdtNguoiNhan = form.elements.phone.value.trim();
+    const emailNguoiNhan = form.elements.email.value.trim();
+    const selectedMethodElement = form.querySelector('input[name="paymentMethod"]:checked');
+    const phuongThucTT = selectedMethodElement ? selectedMethodElement.value : 'cash';
+
+    const streetInput = form.elements.street.value.trim();
+    const provinceSelect = document.getElementById('quickProvince');
+    const districtSelect = document.getElementById('quickDistrict');
+    const wardSelect = document.getElementById('quickWard');
+
+    const provinceText = provinceSelect.options[provinceSelect.selectedIndex].text;
+    const districtText = districtSelect.options[districtSelect.selectedIndex].text;
+    const wardText = wardSelect.options[wardSelect.selectedIndex].text;
+
+    if (!tenNguoiNhan || !sdtNguoiNhan || !emailNguoiNhan || !provinceSelect.value || !districtSelect.value || !wardSelect.value || !streetInput) {
+        if (typeof addAlertBox === "function") addAlertBox('Vui lòng điền đầy đủ và chọn đủ thông tin địa chỉ.', '#ff0000', '#fff', 4000);
+        return false;
+    }
+
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(sdtNguoiNhan)) {
+        if (typeof addAlertBox === "function") addAlertBox('Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 chữ số.', '#ff0000', '#fff', 4000);
+        return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailNguoiNhan)) {
+        if (typeof addAlertBox === "function") addAlertBox('Email không hợp lệ. Vui lòng kiểm tra lại.', '#ff0000', '#fff', 4000);
+        return false;
+    }
+
+    let paymentSpecificDetails = {};
+    if (phuongThucTT === 'card') {
+        const cardNumber = form.elements.cardNumber.value.trim();
+        const expiryDate = form.elements.expiryDate.value.trim();
+        const cvv = form.elements.cvv.value.trim();
+        const cardHolderName = form.elements.cardHolderName.value.trim();
+        if (!cardNumber || !expiryDate || !cvv || !cardHolderName) {
+            if (typeof addAlertBox === "function") addAlertBox('Vui lòng nhập đầy đủ thông tin thẻ tín dụng.', '#ff0000', '#fff', 4000);
+            return false;
+        }
+        paymentSpecificDetails = { type: 'card', cardHolder: cardHolderName };
+    } else if (phuongThucTT === 'transfer') {
+        paymentSpecificDetails = { type: 'transfer' };
+    } else {
+        paymentSpecificDetails = { type: 'cash_on_delivery' };
+    }
+
+    const diaChiNhan = `${streetInput}, ${wardText}, ${districtText}, ${provinceText}`;
+    const unitPrice = getCheckoutUnitPrice(quickCheckoutProduct);
+    const orderData = {
+        username: user.username,
+        products: [{
+            product_masp: quickCheckoutProduct.masp,
+            quantity: quantity,
+            price_at_purchase: unitPrice
+        }],
+        shipping_info: {
+            name: tenNguoiNhan,
+            phone: sdtNguoiNhan,
+            email: emailNguoiNhan,
+            address: diaChiNhan,
+            payment_method: phuongThucTT,
+            payment_details: paymentSpecificDetails
+        }
+    };
+
+    try {
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+            throw new Error(responseData.error || `Lỗi ${response.status} khi gửi đơn hàng`);
+        }
+
+        if (typeof addAlertBox === "function") addAlertBox('Thanh toán thành công! Đơn hàng của bạn đang được xử lý.', '#17c671', '#fff', 4000);
+        closeQuickCheckout();
+        form.reset();
+        quickCheckoutProduct = null;
+        return false;
+    } catch (error) {
+        console.error('Lỗi khi thanh toán nhanh:', error);
+        if (typeof addAlertBox === "function") addAlertBox('Lỗi khi thanh toán: ' + error.message, '#ff0000', '#fff', 5000);
+        return false;
+    }
+}
 
 window.onload = async function () { 
     try {
@@ -438,3 +689,20 @@ function suggestion() {
         }
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const quickQuantityInput = document.getElementById('quickQuantity');
+    if (quickQuantityInput) {
+        quickQuantityInput.addEventListener('input', updateQuickCheckoutSummary);
+        quickQuantityInput.addEventListener('change', updateQuickCheckoutSummary);
+    }
+
+    const quickCheckoutModal = document.getElementById('quickCheckoutForm');
+    if (quickCheckoutModal) {
+        quickCheckoutModal.addEventListener('click', function(event) {
+            if (event.target === quickCheckoutModal) {
+                closeQuickCheckout();
+            }
+        });
+    }
+});

@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/trangchu.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/home_products.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chitietsanpham.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gioHang.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
     <script src="{{ url_for('static', filename='js/classes.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dungchung.js') }}"></script>
@@ -93,7 +94,7 @@
                         </div>
 
                         <div class="area_order">
-                            <a class="buy_now" onclick="themVaoGioHang(maProduct, nameProduct);">
+                            <a class="buy_now" href="javascript:void(0);" onclick="openQuickCheckout();">
                                 <b>MUA NGAY</b>
                                 <p>Giao tận nơi hoặc nhận tại cửa hàng</p>
                             </a>
@@ -138,6 +139,145 @@
 
         <div id="goiYSanPham"></div>
     </section>
+
+    <div id="quickCheckoutForm" class="modern-modal-overlay" style="display: none;">
+        <div class="modern-modal-content">
+            <div class="modal-header">
+                <h2><i class="fa fa-credit-card"></i> Thanh Toán Nhanh</h2>
+                <span class="close-modal" onclick="closeQuickCheckout()">&times;</span>
+            </div>
+
+            <form action="javascript:void(0)" onsubmit="event.preventDefault(); submitQuickCheckout(this);">
+                <div class="modal-body">
+                    <div class="checkout-steps">
+                        <div class="step active">1. Thông tin</div>
+                        <div class="step">2. Vận chuyển</div>
+                        <div class="step">3. Thanh toán</div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-section">
+                            <h3><i class="fa fa-user"></i> Người nhận hàng</h3>
+                            <div class="form-floating">
+                                <input type="text" id="quickFullName" name="fullName" placeholder=" " required>
+                                <label for="quickFullName">Họ và Tên *</label>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-floating">
+                                    <input type="tel" id="quickPhone" name="phone" placeholder=" " required>
+                                    <label for="quickPhone">Số điện thoại *</label>
+                                </div>
+                                <div class="form-floating">
+                                    <input type="email" id="quickEmail" name="email" placeholder=" " required>
+                                    <label for="quickEmail">Email *</label>
+                                </div>
+                            </div>
+                            <div class="address-picker-grid">
+                                <div class="form-floating">
+                                    <select id="quickProvince" name="province" required>
+                                        <option value="" disabled selected hidden>Chọn Tỉnh / Thành phố</option>
+                                    </select>
+                                    <label for="quickProvince">Tỉnh / Thành phố *</label>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-floating">
+                                        <select id="quickDistrict" name="district" required disabled>
+                                            <option value="" disabled selected hidden>Chọn Quận / Huyện</option>
+                                        </select>
+                                        <label for="quickDistrict">Quận / Huyện *</label>
+                                    </div>
+                                    <div class="form-floating">
+                                        <select id="quickWard" name="ward" required disabled>
+                                            <option value="" disabled selected hidden>Chọn Phường / Xã</option>
+                                        </select>
+                                        <label for="quickWard">Phường / Xã *</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-floating">
+                                <input type="text" id="quickStreet" name="street" placeholder=" " required>
+                                <label for="quickStreet">Số nhà, tên đường *</label>
+                            </div>
+                            <div class="form-floating">
+                                <input type="number" id="quickQuantity" name="quantity" min="1" value="1" required>
+                                <label for="quickQuantity">Số lượng *</label>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3><i class="fa fa-wallet"></i> Phương thức thanh toán</h3>
+                            <div class="payment-options">
+                                <label class="payment-card">
+                                    <input type="radio" name="paymentMethod" value="cash" checked onchange="hienThiChiTietThanhToanQuick()">
+                                    <div class="card-content">
+                                        <i class="fa fa-money"></i>
+                                        <span>Tiền mặt (COD)</span>
+                                    </div>
+                                </label>
+                                <label class="payment-card">
+                                    <input type="radio" name="paymentMethod" value="transfer" onchange="hienThiChiTietThanhToanQuick()">
+                                    <div class="card-content">
+                                        <i class="fa fa-university"></i>
+                                        <span>Chuyển khoản</span>
+                                    </div>
+                                </label>
+                                <label class="payment-card">
+                                    <input type="radio" name="paymentMethod" value="card" onchange="hienThiChiTietThanhToanQuick()">
+                                    <div class="card-content">
+                                        <i class="fa fa-credit-card"></i>
+                                        <span>Thẻ tín dụng</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div id="quickQrPaymentDetails" class="payment-sub-detail" style="display: none;">
+                                <div class="qr-container">
+                                    <p>Quét mã để thanh toán nhanh</p>
+                                    <img src="{{ url_for('static', filename='img/QRPay.jpg') }}" alt="QR Code">
+                                    <div class="bank-info">
+                                        <p><strong>BIDV:</strong> 4921793786</p>
+                                        <p><strong>Chủ TK:</strong> NGUYEN VAN THANG</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="quickVisaPaymentDetails" class="payment-sub-detail" style="display: none;">
+                                <div class="card-input-group">
+                                    <input type="text" id="quickCardNumber" name="cardNumber" placeholder="Số thẻ (XXXX XXXX XXXX XXXX)">
+                                    <div class="form-row">
+                                        <input type="text" id="quickExpiryDate" name="expiryDate" placeholder="MM/YY">
+                                        <input type="text" id="quickCVV" name="cvv" placeholder="CVV" maxlength="4">
+                                    </div>
+                                    <input type="text" id="quickCardHolderName" name="cardHolderName" placeholder="TÊN CHỦ THẺ" style="text-transform: uppercase;">
+                                </div>
+                            </div>
+
+                            <div class="summary-card" style="margin-top: 20px;">
+                                <h3>Tóm tắt đơn hàng</h3>
+                                <div class="summary-row">
+                                    <span>Sản phẩm:</span>
+                                    <span id="quickOrderProductName">--</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Số lượng:</span>
+                                    <span id="quickOrderQuantity">1</span>
+                                </div>
+                                <div class="summary-row total">
+                                    <strong>TỔNG TIỀN:</strong>
+                                    <span id="quickOrderTotal">0 ₫</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeQuickCheckout()">Quay lại</button>
+                    <button type="submit" class="btn-primary">Đặt hàng ngay</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         function openSpecsModal() {
