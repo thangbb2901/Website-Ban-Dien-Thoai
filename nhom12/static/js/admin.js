@@ -784,6 +784,20 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
         } catch (e) { return ""; }
     }
 
+    function getValueByLabel(labelKeyword, inputSelector = 'input', isSelect = false) {
+        for (const tr of trs) {
+            const labelCell = tr.cells && tr.cells[0] ? tr.cells[0] : null;
+            const valueCell = tr.cells && tr.cells[1] ? tr.cells[1] : null;
+            if (!labelCell || !valueCell) continue;
+            const labelText = (labelCell.textContent || '').trim().toLowerCase();
+            if (!labelText.includes(labelKeyword.toLowerCase())) continue;
+            const element = valueCell.querySelector(inputSelector);
+            if (!element) return "";
+            return isSelect ? element.value : element.value.trim();
+        }
+        return "";
+    }
+
     var name = getValueFromInput(2);
     var company = getValueFromInput(3, 'select', true);
     var priceString = getValueFromInput(5);
@@ -795,16 +809,16 @@ function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
 
     // === BẮT ĐẦU PHẦN SỬA LỖI CHỈ SỐ ===
     var detail = {};
-    detail.screen = getValueFromInput(11);      // Hàng 12 -> trIndex 11
-    detail.os = getValueFromInput(12);          // Hàng 13 -> trIndex 12
-    detail.camara = getValueFromInput(13);      // Hàng 14 -> trIndex 13
-    detail.camaraFront = getValueFromInput(14); // Hàng 15 -> trIndex 14
-    detail.cpu = getValueFromInput(15);         // Hàng 16 -> trIndex 15
-    detail.ram = getValueFromInput(16);         // Hàng 17 -> trIndex 16
-    detail.rom = getValueFromInput(17);         // Hàng 18 -> trIndex 17
-    detail.microUSB = getValueFromInput(18);    // Hàng 19 -> trIndex 18 (Thẻ nhớ)
-    detail.sim = getValueFromInput(19);         // Hàng 20 -> trIndex 19 (SIM) - ĐÃ SỬA
-    detail.battery = getValueFromInput(20);     // Hàng 21 -> trIndex 20 (Pin) - ĐÃ SỬA
+    detail.screen = getValueByLabel('Màn hình') || getValueFromInput(11);
+    detail.os = getValueByLabel('Hệ điều hành') || getValueFromInput(12);
+    detail.camara = getValueByLabel('Camara sau') || getValueByLabel('Camera sau') || getValueFromInput(13);
+    detail.camaraFront = getValueByLabel('Camara trước') || getValueByLabel('Camera trước') || getValueFromInput(14);
+    detail.cpu = getValueByLabel('CPU') || getValueFromInput(15);
+    detail.ram = getValueByLabel('RAM') || getValueFromInput(16);
+    detail.rom = getValueByLabel('Bộ nhớ trong') || getValueFromInput(17);
+    detail.microUSB = getValueByLabel('Thẻ nhớ') || getValueFromInput(18);
+    detail.sim = getValueByLabel('SIM') || getValueFromInput(19);
+    detail.battery = getValueByLabel('Pin') || getValueFromInput(20);
 
     const productData = {
         name: name,
@@ -961,11 +975,21 @@ async function addKhungSuaSanPham(masp) {
         return; // Lỗi đã được callAPI xử lý
     }
 
+    const escAttr = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    const detail = productToEdit.detail || {};
+    const promo = productToEdit.promo || {};
+
     var s = `<span class="close" onclick="this.parentElement.style.transform = 'scale(0)'; previewSrc = null;">&times;</span>
     <table class="overlayTable table-outline table-content table-header">
-        <tr> <th colspan="2">Sửa sản phẩm: ${productToEdit.name}</th> </tr>
-        <tr> <td>Mã sản phẩm:</td> <td><input type="text" value="${productToEdit.masp}" data-original-masp="${productToEdit.masp}" disabled></td> </tr>
-        <tr> <td>Tên sản phẩm:</td> <td><input type="text" value="${productToEdit.name}"></td> </tr>
+        <tr> <th colspan="2">Sửa sản phẩm: ${escAttr(productToEdit.name)}</th> </tr>
+        <tr> <td>Mã sản phẩm:</td> <td><input type="text" value="${escAttr(productToEdit.masp)}" data-original-masp="${escAttr(productToEdit.masp)}" disabled></td> </tr>
+        <tr> <td>Tên sản phẩm:</td> <td><input type="text" value="${escAttr(productToEdit.name)}"></td> </tr>
         <tr> <td>Hãng:</td> <td> <select name="chonCompany">`;
 
     var companyOptions = ["Apple", "Samsung", "Oppo", "Nokia", "Huawei", "Xiaomi", "Realme", "Vivo", "Philips", "Mobell", "Mobiistar", "Itel", "Coolpad", "HTC", "Motorola", "Khác"];
@@ -988,29 +1012,29 @@ async function addKhungSuaSanPham(masp) {
                 <input type="file" accept="image/*" onchange="capNhatAnhSanPham(this.files, 'anhDaiDienSanPhamSua')">
              </td>
         </tr>
-        <tr> <td>Giá tiền (số):</td> <td><input type="number" value="${stringToNum(productToEdit.price)}"></td> </tr>
-        <tr> <td>Số sao (0-5):</td> <td><input type="number" value="${productToEdit.star || 0}" min="0" max="5"></td> </tr>
-        <tr> <td>Số đánh giá:</td> <td><input type="number" value="${productToEdit.rateCount || 0}" min="0"></td> </tr>
+        <tr> <td>Giá tiền (số):</td> <td><input type="number" value="${escAttr(stringToNum(productToEdit.price))}"></td> </tr>
+        <tr> <td>Số sao (0-5):</td> <td><input type="number" value="${escAttr(productToEdit.star || 0)}" min="0" max="5"></td> </tr>
+        <tr> <td>Số đánh giá:</td> <td><input type="number" value="${escAttr(productToEdit.rateCount || 0)}" min="0"></td> </tr>
         <tr> <td>Khuyến mãi:</td> <td> <select>
             <option value="">Không</option>
-            <option value="tragop" ${productToEdit.promo && productToEdit.promo.name == 'tragop' ? 'selected' : ''}>Trả góp</option>
-            <option value="giamgia" ${productToEdit.promo && productToEdit.promo.name == 'giamgia' ? 'selected' : ''}>Giảm giá</option>
-            <option value="giareonline" ${productToEdit.promo && productToEdit.promo.name == 'giareonline' ? 'selected' : ''}>Giá rẻ online</option>
-            <option value="moiramat" ${productToEdit.promo && productToEdit.promo.name == 'moiramat' ? 'selected' : ''}>Mới ra mắt</option>
+            <option value="tragop" ${promo.name == 'tragop' ? 'selected' : ''}>Trả góp</option>
+            <option value="giamgia" ${promo.name == 'giamgia' ? 'selected' : ''}>Giảm giá</option>
+            <option value="giareonline" ${promo.name == 'giareonline' ? 'selected' : ''}>Giá rẻ online</option>
+            <option value="moiramat" ${promo.name == 'moiramat' ? 'selected' : ''}>Mới ra mắt</option>
         </select> </td> </tr>
-        <tr> <td>Giá trị khuyến mãi:</td> <td><input type="text" value="${(productToEdit.promo && productToEdit.promo.value) || ''}"></td> </tr>
-        <tr> <td>Số lượng kho:</td> <td><input type="number" value="${productToEdit.quantity || 0}" min="0"></td> </tr>
+        <tr> <td>Giá trị khuyến mãi:</td> <td><input type="text" value="${escAttr(promo.value || '')}"></td> </tr>
+        <tr> <td>Số lượng kho:</td> <td><input type="number" value="${escAttr(productToEdit.quantity || 0)}" min="0"></td> </tr>
         <tr> <th colspan="2">Thông số kĩ thuật</th> </tr>
-        <tr> <td>Màn hình:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.screen) || ''}"></td> </tr>
-        <tr> <td>Hệ điều hành:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.os) || ''}"></td> </tr>
-        <tr> <td>Camera sau:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.camara) || ''}"></td> </tr>
-        <tr> <td>Camera trước:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.camaraFront) || ''}"></td> </tr>
-        <tr> <td>CPU:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.cpu) || ''}"></td> </tr>
-        <tr> <td>RAM:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.ram) || ''}"></td> </tr>
-        <tr> <td>Bộ nhớ trong:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.rom) || ''}"></td> </tr>
-        <tr> <td>Thẻ nhớ:</td> <td><input type="text" value="${(productToEdit.detail && (productToEdit.detail.microUSB || productToEdit.detail.memoryStick)) || ''}"></td> </tr>
-        <tr> <td>SIM:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.sim) || ''}"></td> </tr>
-        <tr> <td>Dung lượng Pin:</td> <td><input type="text" value="${(productToEdit.detail && productToEdit.detail.battery) || ''}"></td> </tr>
+        <tr> <td>Màn hình:</td> <td><input type="text" value="${escAttr(detail.screen || '')}"></td> </tr>
+        <tr> <td>Hệ điều hành:</td> <td><input type="text" value="${escAttr(detail.os || '')}"></td> </tr>
+        <tr> <td>Camera sau:</td> <td><input type="text" value="${escAttr(detail.camara || '')}"></td> </tr>
+        <tr> <td>Camera trước:</td> <td><input type="text" value="${escAttr(detail.camaraFront || '')}"></td> </tr>
+        <tr> <td>CPU:</td> <td><input type="text" value="${escAttr(detail.cpu || '')}"></td> </tr>
+        <tr> <td>RAM:</td> <td><input type="text" value="${escAttr(detail.ram || '')}"></td> </tr>
+        <tr> <td>Bộ nhớ trong:</td> <td><input type="text" value="${escAttr(detail.rom || '')}"></td> </tr>
+        <tr> <td>Thẻ nhớ:</td> <td><input type="text" value="${escAttr(detail.microUSB || detail.memoryStick || '')}"></td> </tr>
+        <tr> <td>SIM:</td> <td><input type="text" value="${escAttr(detail.sim || '')}"></td> </tr>
+        <tr> <td>Dung lượng Pin:</td> <td><input type="text" value="${escAttr(detail.battery || '')}"></td> </tr>
         <tr> <td colspan="2" class="table-footer"><button onclick="suaSanPham('${productToEdit.masp}')">LƯU</button></td> </tr>
     </table>`;
 
