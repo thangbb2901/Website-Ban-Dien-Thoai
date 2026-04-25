@@ -15,7 +15,7 @@ from werkzeug.security import generate_password_hash
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(BASE_DIR, 'phone_store_uploads'))
+UPLOAD_ROOT = os.environ.get('PHONE_STORE_UPLOAD_ROOT', os.path.join(BASE_DIR, 'static', 'img'))
 
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 MYSQL_PORT = int(os.environ.get('MYSQL_PORT', '3306'))
@@ -208,7 +208,7 @@ def product_row_to_dict(row):
     elif str(img_filename).startswith(('http://', 'https://', '/')):
         img_value = img_filename
     else:
-        img_value = f"/media/products/{img_filename}"
+        img_value = f"/static/img/products/{img_filename}"
     return {
         "masp": row["masp"], "name": row["name"], "company": row["company"],
         "img": img_value,
@@ -262,7 +262,7 @@ def banner_row_to_dict(row):
         "display_order": row["display_order"],
         "uploaded_at": row["uploaded_at"],
         "banner_type": row["banner_type"] if "banner_type" in row.keys() else "hero",
-        "image_url": f"/media/banners/{row['filename']}"
+        "image_url": f"/static/img/banners/{row['filename']}"
     }
 
 
