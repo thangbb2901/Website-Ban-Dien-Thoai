@@ -18,7 +18,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v5
 
-      - name: Stop old containers
+      - name: Stop previous project containers
+        run: docker compose -p nhom12 down
+        shell: powershell
+        working-directory: ./doan
+
+      - name: Stop current project containers
         run: docker compose down
         shell: powershell
         working-directory: ./doan
