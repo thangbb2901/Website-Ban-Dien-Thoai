@@ -1,7 +1,7 @@
 {
-  "uid": "nhom12-business",
+  "uid": "doan-business",
   "title": "Business Dashboard - Nhom 12",
-  "tags": ["business", "nhom12", "sales"],
+  "tags": ["business", "doan", "sales"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 2,
@@ -19,10 +19,10 @@
     },
     {
       "type": "stat",
-      "title": "Total Revenue",
+      "title": "Total Revenue (đ)",
       "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
       "targets": [{"expr": "revenue_total_vnd", "refId": "A"}],
-      "fieldConfig": {"defaults": {"unit": "currencyVND", "decimals": 0}, "overrides": []}
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
     },
     {
       "type": "stat",

@@ -1,4 +1,4 @@
-// doannhom12/js/admin.js
+// doan/js/admin.js
 
 const API_BASE_URL = '/api'; // SỬA ĐỔI: Sử dụng đường dẫn tương đối
 
@@ -53,7 +53,7 @@ async function xoaDonHang(orderId) {
         }
     }
 }
-// doannhom12/static/js/admin.js
+// doan/static/js/admin.js
 
 window.onload = async function () {
     // Không còn đoạn mã kiểm tra localStorage ở đây nữa.
@@ -108,7 +108,7 @@ function addChart(id, chartOption) {
     }
 }
 
-// File: nhom12/static/js/admin.js
+// File: doan/static/js/admin.js
 
 // Bảng màu và hàm hexToRgba giữ nguyên
 const CHART_COLORS = [
@@ -770,7 +770,7 @@ function openThemSanPham() { // Đổi tên hàm cho nhất quán
     previewSrc = null; // Reset ảnh xem trước
 }
 
-// File: nhom12/static/js/admin.js
+// File: doan/static/js/admin.js
 
 function layThongTinSanPhamTuTable(idKhung, isEditMode = false) {
     var khung = document.getElementById(idKhung);

@@ -1,4 +1,4 @@
-// Trong doannhom12/js/dungchung.js
+// Trong doan/js/dungchung.js
 
 // Thông tin admin mặc định
 var adminInfo = [{
@@ -995,20 +995,20 @@ function addHeader() {
           </div>
       </div>`);
   }
-// Trong doannhom12/js/dungchung.js
+// Trong doan/js/dungchung.js
 
 // ... (các hàm khác của bạn) ...
 
-// Trong doannhom12/js/dungchung.js
+// Trong doan/js/dungchung.js
 
 // ... (các hàm khác của bạn) ...
 
-// Trong doannhom12/js/dungchung.js
+// Trong doan/js/dungchung.js
 
 // ... (các hàm khác của bạn) ...
 // Thêm CSS cho alert nhỏ gọn hơn
 
-// Trong doannhom12/js/dungchung.js
+// Trong doan/js/dungchung.js
 
 // ... (các hàm khác của bạn) ...
 // HÀM CẦN CẬP NHẬT 1

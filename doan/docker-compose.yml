@@ -32,7 +32,7 @@ services:
       replicas: 3
     environment:
       - FLASK_ENV=development
-      - FLASK_SECRET_KEY=nhom12_secret_key_fixed_2024_secure
+      - FLASK_SECRET_KEY=doan_secret_key_fixed_2024_secure
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=phone_user

@@ -1,4 +1,4 @@
-// doannhom12/js/lienhe.js
+// doan/js/lienhe.js
 
 window.onload = async function () { // ĐÁNH DẤU HÀM LÀ ASYNC
     try {

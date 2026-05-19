@@ -1,4 +1,4 @@
-// Trong doannhom12/js/trangchu.js
+// Trong doan/js/trangchu.js
 
 const HOME_SCROLL_POSITION_KEY = 'homeScrollPosition';
 const HOME_RECENTLY_VIEWED_KEY = 'homeRecentlyViewedProducts';

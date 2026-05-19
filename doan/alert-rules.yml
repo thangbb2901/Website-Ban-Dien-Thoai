@@ -1,5 +1,5 @@
 groups:
-  - name: nhom12-alerts
+  - name: doan-alerts
     rules:
       - alert: WebServerDown
         expr: up{job="flask_app"} == 0

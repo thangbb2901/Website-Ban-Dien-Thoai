@@ -1,4 +1,4 @@
-// doannhom12/js/classes.js
+// doan/js/classes.js
 
 function User(username, pass, ho, ten, email, products, donhang) {
     this.ho = ho || '';

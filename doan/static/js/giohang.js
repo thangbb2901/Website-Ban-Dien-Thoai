@@ -1,4 +1,4 @@
-// doannhom12/js/giohang.js
+// doan/js/giohang.js
 var currentuser; // User hiện tại, biến toàn cục
 
 function getCartStockIssues(user) {

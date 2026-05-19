@@ -1,4 +1,4 @@
-// doannhom12/js/nguoidung.js
+// doan/js/nguoidung.js
 
 // Hàm chính được gọi khi trang tải xong
 async function khoiTaoTrangNguoiDung() {
@@ -63,7 +63,7 @@ async function khoiTaoTrangNguoiDung() {
 
 window.onload = khoiTaoTrangNguoiDung;
 
-// Trong file: doannhom12/js/nguoidung.js
+// Trong file: doan/js/nguoidung.js
 
 function hienThiThongTinNguoiDung(user) {
     const infoDiv = document.getElementById('info');
@@ -107,7 +107,7 @@ function hienThiThongTinNguoiDung(user) {
         </div>
     `;
 }
-// Trong file: doannhom12/js/nguoidung.js
+// Trong file: doan/js/nguoidung.js
 
 function triggerForgotPasswordModalFromUserInfo() {
     // 1. Lấy đối tượng div chứa toàn bộ modal tài khoản

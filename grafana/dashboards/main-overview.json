@@ -1,5 +1,5 @@
 {
-  "uid": "nhom12-main-overview",
+  "uid": "doan-main-overview",
   "title": "Main Overview - Nhom 12",
   "tags": ["overview", "prometheus", "website"],
   "timezone": "browser",
@@ -86,12 +86,12 @@
     },
     {
       "type": "stat",
-      "title": "Revenue",
+      "title": "Total Revenue (₫)",
       "gridPos": {"x": 12, "y": 12, "w": 6, "h": 4},
       "targets": [
         {"expr": "revenue_total_vnd", "refId": "A"}
       ],
-      "fieldConfig": {"defaults": {"unit": "currencyVND", "decimals": 0}, "overrides": []}
+      "fieldConfig": {"defaults": {"unit": "none", "decimals": 0}, "overrides": []}
     },
     {
       "type": "bargauge",

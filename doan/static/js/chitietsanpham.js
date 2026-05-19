@@ -1,4 +1,4 @@
-// doannhom12/js/chitietsanpham.js
+// doan/js/chitietsanpham.js
 
 var nameProduct, maProduct, sanPhamHienTai; // Biến toàn cục
 const HOME_RECENTLY_VIEWED_KEY = 'homeRecentlyViewedProducts';

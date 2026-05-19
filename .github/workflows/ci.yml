@@ -31,11 +31,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        working-directory: ./nhom12
+        working-directory: ./doan
 
       - name: Syntax check
         run: python -m py_compile app.py model.py check_db.py
-        working-directory: ./nhom12
+        working-directory: ./doan
 
   docker-build:
     name: Build Docker Image
@@ -52,7 +52,7 @@ jobs:
       - name: Build image (no push)
         uses: docker/build-push-action@v6
         with:
-          context: ./nhom12
-          file: ./nhom12/Dockerfile
+          context: ./doan
+          file: ./doan/Dockerfile
           push: false
-          tags: nhom12-phone-store:ci
+          tags: doan-phone-store:ci
