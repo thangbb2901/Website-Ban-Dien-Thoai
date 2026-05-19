@@ -178,4 +178,4 @@ volumes:
   prometheus_data:
   alertmanager_data:
   mysql_data:
-
+    name: nhom12_mysql_data
