@@ -1745,6 +1745,11 @@ def seed_initial_data(cursor):
     with open(init_sql_path, 'r', encoding='utf-8') as f:
         sql_script = f.read()
 
+    sql_script = '\n'.join(
+        line for line in sql_script.splitlines()
+        if not line.lstrip().startswith('--')
+    )
+
     statements = []
     for raw_stmt in sql_script.split(';'):
         stmt = raw_stmt.strip()
@@ -1754,7 +1759,18 @@ def seed_initial_data(cursor):
         if not upper_stmt.startswith('INSERT INTO'):
             continue
         stmt = re.sub(r'^INSERT INTO\s+"?(\w+)"?', r'INSERT IGNORE INTO \1', stmt, flags=re.IGNORECASE)
-        stmt = stmt.replace('INSERT IGNORE INTO products VALUES', 'INSERT IGNORE INTO products VALUES')
+        stmt = re.sub(
+            r'^INSERT IGNORE INTO products\s+VALUES',
+            '''INSERT IGNORE INTO products (
+                masp, name, company, img, price, star, rateCount,
+                promo_name, promo_value, detail_screen, detail_os,
+                detail_camara, detail_camaraFront, detail_cpu, detail_ram,
+                detail_rom, detail_microUSB, detail_memoryStick, detail_sim,
+                detail_battery
+            ) VALUES''',
+            stmt,
+            flags=re.IGNORECASE,
+        )
         statements.append(stmt)
 
     cursor.execute("SET FOREIGN_KEY_CHECKS = 0")

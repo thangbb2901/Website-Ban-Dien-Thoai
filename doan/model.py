@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
-MYSQL_PORT = int(os.environ.get('MYSQL_PORT', '3306'))
+MYSQL_PORT = int(os.environ.get('MYSQL_PORT', '3307' if MYSQL_HOST in ('localhost', '127.0.0.1') else '3306'))
 MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
 MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
 MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'phone_store')
@@ -318,8 +318,11 @@ def ensure_admin_account():
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT * FROM users WHERE username = 'admin'")
-        if not cursor.fetchone():
-            default_admin_password = os.getenv('ADMIN_DEFAULT_PASSWORD') or secrets.token_urlsafe(12)
+        admin_row = cursor.fetchone()
+        default_admin_password = os.getenv('ADMIN_DEFAULT_PASSWORD')
+
+        if not admin_row:
+            default_admin_password = default_admin_password or secrets.token_urlsafe(12)
             cursor.execute('''
                 INSERT INTO users (username, pass, ho, ten, email, products, off, perm)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -330,7 +333,18 @@ def ensure_admin_account():
             else:
                 logging.warning(f"Đã tạo tài khoản admin mặc định. Mật khẩu tạm thời: {default_admin_password}")
         else:
-            logging.info("Tài khoản admin đã tồn tại.")
+            if default_admin_password:
+                cursor.execute('''
+                    UPDATE users
+                    SET pass = ?, off = 0, perm = 1
+                    WHERE username = 'admin'
+                ''', (generate_password_hash(default_admin_password),))
+                conn.commit()
+                logging.info("Đã đồng bộ tài khoản admin mặc định từ biến môi trường ADMIN_DEFAULT_PASSWORD.")
+            else:
+                cursor.execute("UPDATE users SET off = 0, perm = 1 WHERE username = 'admin'")
+                conn.commit()
+                logging.info("Tài khoản admin đã tồn tại.")
     except mysql.connector.Error as e:
         logging.error(f"Lỗi CSDL khi đảm bảo tài khoản admin: {e}")
     finally:

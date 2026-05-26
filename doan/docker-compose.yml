@@ -39,6 +39,7 @@ services:
       - MYSQL_PASSWORD=phone_password
       - MYSQL_DATABASE=phone_store
       - DATABASE_URL=mysql://phone_user:phone_password@mysql:3306/phone_store
+      - ADMIN_DEFAULT_PASSWORD=adadad
     volumes:
       - .:/app
     depends_on:
