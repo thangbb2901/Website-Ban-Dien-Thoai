@@ -1758,6 +1758,8 @@ def seed_initial_data(cursor):
         upper_stmt = stmt.lstrip().upper()
         if not upper_stmt.startswith('INSERT INTO'):
             continue
+        if re.match(r'^INSERT INTO\s+"?banners"?\b', stmt, flags=re.IGNORECASE):
+            continue
         stmt = re.sub(r'^INSERT INTO\s+"?(\w+)"?', r'INSERT IGNORE INTO \1', stmt, flags=re.IGNORECASE)
         stmt = re.sub(
             r'^INSERT IGNORE INTO products\s+VALUES',
