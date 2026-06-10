@@ -134,12 +134,16 @@ function addProductToTable(user) {
     }
 
     var totalPrice = 0;
+    var hasMissingProductInfo = false;
     for (var i = 0; i < user.products.length; i++) {
         var maspTrongGio = user.products[i].ma;
         var soluongSp = user.products[i].soluong;
         var p = timKiemTheoMa(window.list_products, maspTrongGio);
 
-        if (!p) continue;
+        if (!p) {
+            hasMissingProductInfo = true;
+            continue;
+        }
 
         var productPrice = (p.promo && p.promo.name && p.promo.name.toLowerCase() == 'giareonline' ? p.promo.value : p.price);
         var priceNum = stringToNum(productPrice);

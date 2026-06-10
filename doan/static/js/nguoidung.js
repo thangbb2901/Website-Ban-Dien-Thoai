@@ -39,8 +39,10 @@ async function khoiTaoTrangNguoiDung() {
     try {
         const response = await fetch(`/api/users/${user.username}`);
         if (response.ok) {
-            user = await response.json();
-            setCurrentUser(user); // Cập nhật lại localStorage
+            const serverUser = await response.json();
+            user = typeof setCurrentUserFromServer === "function"
+                ? setCurrentUserFromServer(serverUser)
+                : serverUser;
             if (typeof capNhat_ThongTin_CurrentUser === "function") capNhat_ThongTin_CurrentUser();
         }
     } catch (e) {
@@ -419,9 +421,10 @@ async function saveUserInfo(event) {
             throw new Error(responseData.error || 'Cập nhật thất bại');
         }
         const updatedUser = responseData;
-
-        setCurrentUser(updatedUser);
-        hienThiThongTinNguoiDung(updatedUser);
+        const mergedUser = typeof setCurrentUserFromServer === "function"
+            ? setCurrentUserFromServer(updatedUser)
+            : updatedUser;
+        hienThiThongTinNguoiDung(mergedUser);
         closeEditInfoModal();
         addAlertBox('Cập nhật thông tin thành công!', '#28a745', '#fff', 3000);
     } catch (error) {

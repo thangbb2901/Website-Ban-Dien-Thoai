@@ -299,6 +299,25 @@ function setCurrentUser(u) {
     setLocalStorageItem('CurrentUser', u);
 }
 
+function mergeUserWithLocalCart(serverUser, localUser) {
+    if (!serverUser) return localUser || null;
+
+    var mergedUser = copyObject(serverUser);
+    if (localUser && Array.isArray(localUser.products)) {
+        mergedUser.products = copyObject(localUser.products);
+    } else if (!Array.isArray(mergedUser.products)) {
+        mergedUser.products = [];
+    }
+
+    return mergedUser;
+}
+
+function setCurrentUserFromServer(serverUser) {
+    var mergedUser = mergeUserWithLocalCart(serverUser, getCurrentUser());
+    setCurrentUser(mergedUser);
+    return mergedUser;
+}
+
 // Hàm lấy danh sách người dùng từ localStorage
 function getListUser() {
     return getLocalStorageItem('ListUser') || [];
