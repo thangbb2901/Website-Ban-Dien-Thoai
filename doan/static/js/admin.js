@@ -1771,11 +1771,15 @@ async function luuThongTinNguoiDung(username) {
         email: email || null
     };
 
-    if (password) {
-        userData.pass = password; // Backend sẽ hash mật khẩu này
-    }
-
     try {
+        if (password) {
+            await callAPI(`/users/${username}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pass: password })
+            });
+        }
+
         const updatedUser = await callAPI(`/users/${username}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },

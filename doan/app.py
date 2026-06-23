@@ -480,17 +480,23 @@ def change_password_api(username):
     if len(new_password) < 6:
         return jsonify({"error": "Mật khẩu mới phải có ít nhất 6 ký tự."}), 400
 
-    otp_data = get_valid_otp_session('password_change_otp', email=email, username=username)
-    if not otp_data or otp_data.get('otp') != otp:
-        return jsonify({"error": "Mã OTP không hợp lệ hoặc đã hết hạn."}), 400
+    if not is_admin_session():
+        otp_data = get_valid_otp_session('password_change_otp', email=email, username=username)
+        if not otp_data or otp_data.get('otp') != otp:
+            return jsonify({"error": "Mã OTP không hợp lệ hoặc đã hết hạn."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
+        cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Người dùng không tìm thấy."}), 404
+
         hashed_password = generate_password_hash(new_password)
         cursor.execute("UPDATE users SET pass = ? WHERE username = ?", (hashed_password, username))
         conn.commit()
-        clear_otp_session('password_change_otp')
+        if not is_admin_session():
+            clear_otp_session('password_change_otp')
         return jsonify({"message": "Đổi mật khẩu thành công."}), 200
     except Exception as e: # Bắt lỗi chung hơn cho cả psycopg2
         conn.rollback()
