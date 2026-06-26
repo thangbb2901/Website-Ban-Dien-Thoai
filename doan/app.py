@@ -5,6 +5,7 @@ import base64
 import re
 import requests
 import mysql.connector
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -22,6 +23,10 @@ import datetime
 import secrets # Thư viện để tạo khóa bí mật
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 import time
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
 from model import (
     get_db_connection,
     product_row_to_dict, user_row_to_dict, order_row_to_dict, banner_row_to_dict,
@@ -1583,7 +1588,13 @@ def delete_banner_api(banner_id):
 
 # ============ GEMINI AI CONFIG ============
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+GEMINI_API_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
+
+def _redact_gemini_api_key(text):
+    if not text or not GEMINI_API_KEY:
+        return text
+    return str(text).replace(GEMINI_API_KEY, '[REDACTED_GEMINI_API_KEY]')
 
 def _get_product_context_for_ai(user_message):
     """Lấy thông tin sản phẩm từ DB để cung cấp context cho AI."""
@@ -1719,7 +1730,7 @@ def ai_chat_api():
         except requests.exceptions.HTTPError as e:
             logging.error(f"Gemini API HTTP Error: {e.response.status_code} - {e.response.text[:300]}")
         except Exception as e:
-            logging.error(f"Gemini API Error: {e}")
+            logging.error("Gemini API Error: %s", _redact_gemini_api_key(str(e)))
     else:
         logging.warning("GEMINI_API_KEY chưa được cấu hình. Sử dụng fallback.")
 
