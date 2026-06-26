@@ -30,8 +30,6 @@ services:
     deploy:
       mode: replicated
       replicas: 3
-    env_file:
-      - .env
     environment:
       - FLASK_ENV=development
       - FLASK_SECRET_KEY=doan_secret_key_fixed_2024_secure

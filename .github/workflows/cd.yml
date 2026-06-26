@@ -28,6 +28,12 @@ jobs:
         shell: powershell
         working-directory: ./doan
 
+      - name: Create environment file
+        run: |
+          "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" | Out-File -FilePath .env -Encoding utf8
+        shell: powershell
+        working-directory: ./doan
+
       - name: Build and start services
         run: docker compose up -d --build
         shell: powershell
