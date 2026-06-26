@@ -103,7 +103,7 @@ class AIChatWidget {
         try {
             const response = await this.callAIAPI(messageText);
             this.removeTypingIndicator(typingId);
-            this.addMessage(response, 'ai');
+            await this.addMessageWithTyping(response, 'ai');
             this.messageHistory.push({ type: 'ai', content: response, timestamp: Date.now() });
         } catch (error) {
             this.removeTypingIndicator(typingId);
@@ -131,7 +131,7 @@ class AIChatWidget {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', type === 'user' ? 'user-message' : 'ai-message');
         
-        if (type === 'ai') {
+        if (type === 'ai' || type === 'ai-error') {
             messageDiv.innerHTML = this.formatAIMessage(message);
         } else {
             messageDiv.textContent = message;
@@ -139,6 +139,43 @@ class AIChatWidget {
         
         this.chatMessagesContainer.appendChild(messageDiv);
         this.scrollToBottom();
+        return messageDiv;
+    }
+
+    async addMessageWithTyping(message, type) {
+        if (!this.chatMessagesContainer) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'ai-message');
+        messageDiv.innerHTML = '<span class="typing-cursor">▌</span>';
+        this.chatMessagesContainer.appendChild(messageDiv);
+        this.scrollToBottom();
+
+        const formattedHtml = this.formatAIMessage(message);
+        const tempEl = document.createElement('div');
+        tempEl.innerHTML = formattedHtml;
+        const fullText = tempEl.textContent || tempEl.innerText;
+
+        // Typing animation - character by character
+        let currentIndex = 0;
+        const charsPerTick = 2;
+        const tickInterval = 15;
+        
+        return new Promise((resolve) => {
+            const typeInterval = setInterval(() => {
+                currentIndex += charsPerTick;
+                if (currentIndex >= fullText.length) {
+                    clearInterval(typeInterval);
+                    messageDiv.innerHTML = formattedHtml;
+                    this.scrollToBottom();
+                    resolve();
+                } else {
+                    const visibleText = fullText.substring(0, currentIndex);
+                    messageDiv.innerHTML = this.formatAIMessage(visibleText) + '<span class="typing-cursor">▌</span>';
+                    this.scrollToBottom();
+                }
+            }, tickInterval);
+        });
     }
 
     formatAIMessage(message) {

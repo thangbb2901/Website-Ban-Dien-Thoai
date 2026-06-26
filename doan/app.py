@@ -3,6 +3,7 @@ import json
 import uuid
 import base64
 import re
+import requests
 import mysql.connector
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
@@ -1580,74 +1581,153 @@ def delete_banner_api(banner_id):
         if conn:
             conn.close()
 
+# ============ GEMINI AI CONFIG ============
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+
+def _get_product_context_for_ai(user_message):
+    """Lấy thông tin sản phẩm từ DB để cung cấp context cho AI."""
+    context_parts = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Tìm sản phẩm liên quan đến câu hỏi
+        search_term = f'%{user_message}%'
+        cursor.execute(
+            "SELECT name, company, price, masp, detail_screen, detail_ram, detail_rom, detail_battery, detail_cpu "
+            "FROM products WHERE name LIKE ? OR company LIKE ? LIMIT 5",
+            (search_term, search_term)
+        )
+        related = cursor.fetchall()
+        if related:
+            context_parts.append("SẢN PHẨM LIÊN QUAN ĐẾN CÂU HỎI:")
+            for p in related:
+                context_parts.append(
+                    f"- {p['name']} (Mã: {p['masp']}, Hãng: {p['company']}, Giá: {p['price']}₫, "
+                    f"Màn hình: {p.get('detail_screen','N/A')}, RAM: {p.get('detail_ram','N/A')}, "
+                    f"ROM: {p.get('detail_rom','N/A')}, Pin: {p.get('detail_battery','N/A')}, CPU: {p.get('detail_cpu','N/A')})"
+                )
+
+        # Luôn kèm top sản phẩm giá rẻ & hot
+        cursor.execute(
+            "SELECT name, company, price, masp FROM products "
+            "ORDER BY CAST(REPLACE(price, '.', '') AS DECIMAL(20,0)) ASC LIMIT 3"
+        )
+        cheap = cursor.fetchall()
+        if cheap:
+            context_parts.append("\nTOP SẢN PHẨM GIÁ RẺ NHẤT:")
+            for p in cheap:
+                context_parts.append(f"- {p['name']} ({p['company']}): {p['price']}₫ (Mã: {p['masp']})")
+
+        cursor.execute(
+            "SELECT name, company, price, masp FROM products "
+            "ORDER BY star DESC, rateCount DESC LIMIT 3"
+        )
+        hot = cursor.fetchall()
+        if hot:
+            context_parts.append("\nTOP SẢN PHẨM HOT NHẤT:")
+            for p in hot:
+                context_parts.append(f"- {p['name']} ({p['company']}): {p['price']}₫ (Mã: {p['masp']})")
+
+    except Exception as e:
+        logging.warning(f"Lỗi khi lấy context sản phẩm cho AI: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return '\n'.join(context_parts)
+
+
+def _call_gemini_api(user_message, product_context):
+    """Gọi Google Gemini API để tạo phản hồi AI."""
+    system_prompt = """Bạn là MI AI - Trợ lý mua sắm thông minh của cửa hàng điện thoại Phone Store.
+
+QUY TẮC BẮT BUỘC:
+1. Luôn trả lời bằng tiếng Việt, thân thiện, chuyên nghiệp.
+2. Dựa vào DỮ LIỆU SẢN PHẨM được cung cấp bên dưới để tư vấn chính xác (tên, giá, mã sản phẩm, thông số).
+3. Khi gợi ý sản phẩm, LUÔN kèm tên, giá và mã sản phẩm (masp).
+4. Nếu khách hỏi về đơn hàng, hướng dẫn vào mục "Đơn hàng của tôi" trên website hoặc liên hệ hotline 032 637 3225.
+5. Không bịa thông tin sản phẩm. Nếu không có dữ liệu, nói rằng "hiện tại mình chưa có thông tin về sản phẩm này".
+6. Sử dụng **in đậm** cho tên sản phẩm và giá.
+7. Giữ câu trả lời ngắn gọn, dưới 200 từ.
+8. Nếu khách chào hỏi, hãy giới thiệu bản thân và hỏi khách cần tìm điện thoại gì.
+9. Luôn kết thúc bằng một câu gợi mở để tiếp tục cuộc trò chuyện."""
+
+    full_user_content = user_message
+    if product_context:
+        full_user_content += f"\n\n--- DỮ LIỆU SẢN PHẨM TỪ CỬA HÀNG ---\n{product_context}"
+
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": system_prompt}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": full_user_content}]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "topP": 0.9,
+            "maxOutputTokens": 500
+        }
+    }
+
+    response = requests.post(
+        f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=30
+    )
+    response.raise_for_status()
+
+    result = response.json()
+    candidates = result.get('candidates', [])
+    if candidates:
+        parts = candidates[0].get('content', {}).get('parts', [])
+        if parts:
+            return parts[0].get('text', '').strip()
+
+    return None
+
+
 @app.route('/api/ai-chat', methods=['POST'])
 def ai_chat_api():
-    """Xử lý yêu cầu chat AI MI AI với logic tìm kiếm sản phẩm thực tế."""
+    """Xử lý yêu cầu chat AI MI AI bằng Google Gemini API."""
     data = request.json
     user_message = data.get('message', '').strip()
 
     if not user_message:
         return jsonify({"error": "Không có tin nhắn nào được cung cấp"}), 400
 
-    user_message_lower = user_message.lower()
-    reply_text = ""
+    # Lấy context sản phẩm từ DB
+    product_context = _get_product_context_for_ai(user_message)
 
-    # 1. Chào hỏi
-    if any(kw in user_message_lower for kw in ["chào", "hi", "hello", "xin chào"]):
-        reply_text = "Xin chào! Tôi là **MI AI** - Trợ lý thông minh của bạn. Bạn đang muốn tìm mua điện thoại hay cần hỗ trợ gì không?"
-    
-    # 2. Tư vấn theo hãng
-    elif any(kw in user_message_lower for kw in ["samsung", "iphone", "apple", "oppo", "nokia", "huawei", "xiaomi", "realme", "vivo"]):
-        brands = ["samsung", "iphone", "oppo", "nokia", "huawei", "xiaomi", "realme", "vivo", "apple"]
-        found_brand = next((b for b in brands if b in user_message_lower), None)
-        
-        if found_brand:
-            if found_brand == "apple": found_brand = "iphone"
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT name, price, masp FROM products WHERE name LIKE ? OR company LIKE ? LIMIT 3", 
-                           (f'%{found_brand}%', f'%{found_brand}%'))
-            products = cursor.fetchall()
-            conn.close()
-
-            if products:
-                reply_text = f"Dòng **{found_brand.upper()}** bên mình đang có các mẫu rất hot đây ạ:\n"
-                for p in products:
-                    reply_text += f"- **{p['name']}**: Giá khoảng {p['price']}₫ (Mã: {p['masp']})\n"
-                reply_text += "\nBạn có muốn mình tư vấn kỹ hơn về mẫu nào không?"
+    # Thử gọi Gemini API
+    if GEMINI_API_KEY:
+        try:
+            ai_reply = _call_gemini_api(user_message, product_context)
+            if ai_reply:
+                return jsonify({"reply": ai_reply})
             else:
-                reply_text = f"Hiện tại các mẫu {found_brand.upper()} đang cháy hàng rồi ạ. Bạn tham khảo sang dòng khác nhé!"
-        else:
-            reply_text = "Bạn đang quan tâm đến hãng điện thoại nào ạ?"
-
-    # 3. Tìm giá rẻ
-    elif any(kw in user_message_lower for kw in ["rẻ", "giá tốt", "tiết kiệm"]):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, price, masp FROM products ORDER BY CAST(REPLACE(price, '.', '') AS DECIMAL(20,0)) ASC LIMIT 3")
-        products = cursor.fetchall()
-        conn.close()
-        
-        if products:
-            reply_text = "Đây là danh sách các máy có **giá tốt nhất** hiện nay:\n"
-            for p in products:
-                reply_text += f"- **{p['name']}**: Chỉ {p['price']}₫\n"
-        else:
-            reply_text = "Hiện tại mình chưa tìm thấy máy nào giá cực kỳ rẻ ạ."
-
-    # 4. Đơn hàng
-    elif any(kw in user_message_lower for kw in ["đơn hàng", "mua hàng"]):
-        reply_text = "Về đơn hàng, bạn vui lòng vào mục **'Đơn hàng của tôi'** hoặc chát với hỗ trợ tại số **032 637 3225** nhé!"
-
-    # 5. Cảm ơn
-    elif any(kw in user_message_lower for kw in ["cảm ơn", "thanks", "ok"]):
-        reply_text = "Rất vui được giúp bạn! **MI AI** luôn sẵn sàng hỗ trợ. 😊"
-
-    # 6. Mặc định
+                logging.warning("Gemini API trả về response rỗng.")
+        except requests.exceptions.Timeout:
+            logging.warning("Gemini API timeout.")
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"Gemini API HTTP Error: {e.response.status_code} - {e.response.text[:300]}")
+        except Exception as e:
+            logging.error(f"Gemini API Error: {e}")
     else:
-        sample_products = get_random_products(limit=2)
-        reply_text = "Hiện tại mình chưa hiểu lắm. 😅 Bạn thử gõ 'Tìm iPhone' hoặc 'Máy giá rẻ' xem sao nhé!"
+        logging.warning("GEMINI_API_KEY chưa được cấu hình. Sử dụng fallback.")
 
+    # Fallback: trả lời cơ bản nếu API lỗi hoặc chưa cấu hình
+    reply_text = (
+        "Xin lỗi, MI AI đang bận một chút. 😅 "
+        "Bạn có thể thử lại sau hoặc liên hệ hotline **032 637 3225** để được hỗ trợ nhé!"
+    )
     return jsonify({"reply": reply_text})
 
 @app.errorhandler(404)
