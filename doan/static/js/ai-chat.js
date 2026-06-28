@@ -97,6 +97,7 @@ class AIChatWidget {
         this.addMessage(messageText, 'user');
         this.chatInput.value = "";
         this.messageHistory.push({ type: 'user', content: messageText, timestamp: Date.now() });
+        this.saveChatHistory();
         
         const typingId = this.showTypingIndicator();
         
@@ -105,6 +106,7 @@ class AIChatWidget {
             this.removeTypingIndicator(typingId);
             await this.addMessageWithTyping(response, 'ai');
             this.messageHistory.push({ type: 'ai', content: response, timestamp: Date.now() });
+            this.saveChatHistory();
         } catch (error) {
             this.removeTypingIndicator(typingId);
             this.addMessage("Xin lỗi, MI AI đang gặp chút sự cố kết nối. Thử lại sau nhé!", 'ai-error');
@@ -115,16 +117,22 @@ class AIChatWidget {
     
     async callAIAPI(message) {
         try {
+            const history = this.messageHistory
+                .slice(-12)
+                .map(msg => ({
+                    role: msg.type === 'user' ? 'user' : 'model',
+                    content: msg.content
+                }));
+
             const response = await fetch('/api/ai-chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ message: message, history: history })
             });
             const data = await response.json();
             return data.reply || 'Xin lỗi, tôi không thể trả lời lúc này.';
         } catch (e) { throw e; }
     }
-    
     addMessage(message, type) {
         if (!this.chatMessagesContainer) return;
         

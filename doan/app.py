@@ -5,7 +5,7 @@ import base64
 import re
 import requests
 import mysql.connector
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -25,7 +25,15 @@ from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTEN
 import time
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+ENV_FILE = os.path.join(BASE_DIR, '.env')
+load_dotenv(ENV_FILE)
+DOTENV_VALUES = dotenv_values(ENV_FILE)
+
+def get_env_or_dotenv_value(name, default=''):
+    value = os.environ.get(name)
+    if value is not None and value.strip():
+        return value.strip()
+    return str(DOTENV_VALUES.get(name, default) or '').strip()
 
 from model import (
     get_db_connection,
@@ -151,8 +159,8 @@ app.config['PRODUCT_UPLOAD_FOLDER'] = PRODUCT_UPLOAD_FOLDER
 app.config['BANNER_UPLOAD_FOLDER'] = BANNER_UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 OTP_TTL_SECONDS = 600
-RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '').strip()
-RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '').strip()
+RECAPTCHA_SITE_KEY = get_env_or_dotenv_value('RECAPTCHA_SITE_KEY')
+RECAPTCHA_SECRET_KEY = get_env_or_dotenv_value('RECAPTCHA_SECRET_KEY')
 RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify'
 
 for upload_dir in (PRODUCT_UPLOAD_FOLDER, BANNER_UPLOAD_FOLDER):
@@ -1696,7 +1704,26 @@ def _get_product_context_for_ai(user_message):
     return '\n'.join(context_parts)
 
 
-def _call_gemini_api(user_message, product_context):
+def _normalize_ai_history(history):
+    if not isinstance(history, list):
+        return []
+
+    normalized = []
+    for item in history[-12:]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get('role')
+        content = str(item.get('content', '')).strip()
+        if role not in ('user', 'model') or not content:
+            continue
+        normalized.append({
+            'role': role,
+            'parts': [{'text': content[:1000]}]
+        })
+    return normalized
+
+
+def _call_gemini_api(user_message, product_context, conversation_history=None):
     """Gọi Google Gemini API để tạo phản hồi AI."""
     system_prompt = """Bạn là MI AI - Trợ lý mua sắm thông minh của cửa hàng điện thoại Phone Store.
 
@@ -1715,23 +1742,23 @@ QUY TẮC BẮT BUỘC:
     if product_context:
         full_user_content += f"\n\n--- DỮ LIỆU SẢN PHẨM TỪ CỬA HÀNG ---\n{product_context}"
 
+    contents = _normalize_ai_history(conversation_history)
+    contents.append({
+        "role": "user",
+        "parts": [{"text": full_user_content}]
+    })
+
     payload = {
         "system_instruction": {
             "parts": [{"text": system_prompt}]
         },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": full_user_content}]
-            }
-        ],
+        "contents": contents,
         "generationConfig": {
             "temperature": 0.7,
             "topP": 0.9,
             "maxOutputTokens": 500
         }
     }
-
     response = requests.post(
         f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
         headers={"Content-Type": "application/json"},
@@ -1755,6 +1782,7 @@ def ai_chat_api():
     """Xử lý yêu cầu chat AI MI AI bằng Google Gemini API."""
     data = request.json
     user_message = data.get('message', '').strip()
+    conversation_history = data.get('history', [])
 
     if not user_message:
         return jsonify({"error": "Không có tin nhắn nào được cung cấp"}), 400
@@ -1765,7 +1793,7 @@ def ai_chat_api():
     # Thử gọi Gemini API
     if GEMINI_API_KEY:
         try:
-            ai_reply = _call_gemini_api(user_message, product_context)
+            ai_reply = _call_gemini_api(user_message, product_context, conversation_history)
             if ai_reply:
                 return jsonify({"reply": ai_reply})
             else:
