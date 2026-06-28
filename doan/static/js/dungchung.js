@@ -406,11 +406,39 @@ async function signUp(form) {
     // Không cần return false
 }
 
+async function refreshLoginCaptcha() {
+    const questionBox = document.getElementById('loginCaptchaQuestion');
+    const captchaInput = document.querySelector('form[name="loginForm"] input[name="captcha_answer"]');
+    if (!questionBox) return;
+
+    questionBox.textContent = 'Đang tải...';
+    try {
+        const response = await fetch('/api/login-captcha', { credentials: 'include' });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Không tải được mã xác nhận.');
+        }
+        questionBox.textContent = data.question;
+        if (captchaInput) captchaInput.value = '';
+    } catch (error) {
+        questionBox.textContent = 'Lỗi';
+        if (typeof addAlertBox === 'function') {
+            addAlertBox(error.message || 'Không tải được mã xác nhận.', '#aa0000', '#fff', 4000);
+        }
+    }
+}
 // Hàm đăng nhập (không cần `return false` ở cuối nữa)
 // Hãy thay thế toàn bộ hàm logIn cũ của bạn bằng hàm này.
 function logIn(form) {
     var username = form.username.value.trim();
     var pass = form.pass.value;
+    var captcha_answer = form.captcha_answer ? form.captcha_answer.value.trim() : '';
+
+    if (!captcha_answer) {
+        alert('Vui lòng nhập mã xác nhận không phải robot.');
+        if (form.captcha_answer) form.captcha_answer.focus();
+        return false;
+    }
 
     // KHÔNG còn vòng lặp for để kiểm tra admin ở đây nữa.
     // Gửi yêu cầu POST đến /api/login cho MỌI TRƯỜNG HỢP (cả admin và user).
@@ -418,7 +446,7 @@ function logIn(form) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ username, pass })
+        body: JSON.stringify({ username, pass, captcha_answer })
     })
         .then(async response => {
             const data = await response.json();
@@ -446,6 +474,7 @@ function logIn(form) {
             // Hiển thị bất kỳ lỗi nào từ máy chủ hoặc lỗi mạng.
             alert('Lỗi đăng nhập: ' + error.message);
             console.error('Lỗi khi đăng nhập:', error);
+            refreshLoginCaptcha();
             if (form.username) form.username.focus();
         });
 
@@ -465,6 +494,7 @@ function showTaiKhoan(show) {
         var taikhoanDiv = document.querySelector('.taikhoan');
         taikhoanDiv.innerHTML = originalTaikhoanContent;
         setupEventTaiKhoan();
+        refreshLoginCaptcha();
     }
 }
 
@@ -480,7 +510,7 @@ function setupEventTaiKhoan() {
     var taikhoan = containTaikhoanDiv.querySelector('.taikhoan');
     if (!taikhoan) return;
 
-    var listInputs = taikhoan.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
+    var listInputs = taikhoan.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="number"]');
 
     ['blur', 'focus'].forEach(function (evt) {
         listInputs.forEach(function (input) {
@@ -1123,6 +1153,19 @@ function addContainTaiKhoan() {
                             <label>Mật khẩu <span class="req">*</span></label>
                             <input name="pass" type="password" required autocomplete="off" />
                         </div>
+                        <div class="captcha-wrap">
+                            <div class="captcha-question">
+                                <span>Xác nhận không phải robot</span>
+                                <strong id="loginCaptchaQuestion">Đang tải...</strong>
+                                <button type="button" class="captcha-refresh" onclick="refreshLoginCaptcha()" aria-label="Đổi mã xác nhận">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
+                            </div>
+                            <div class="field-wrap captcha-answer-wrap">
+                                <label>Kết quả <span class="req">*</span></label>
+                                <input name="captcha_answer" type="number" required autocomplete="off" inputmode="numeric" />
+                            </div>
+                        </div>
                         <div class="forgot">
                             <a href="javascript:void(0);" onclick="showForgotPasswordForm();">Quên mật khẩu?</a>
                         </div>
@@ -1168,6 +1211,7 @@ function addContainTaiKhoan() {
         originalTaikhoanContent = taikhoanModalContentDiv.innerHTML;
     }
     setupEventTaiKhoan(); // Gọi lại để gán event cho các form và input mới
+    refreshLoginCaptcha();
 }
 
 function addPlc() {
