@@ -41,6 +41,8 @@ services:
       - DATABASE_URL=mysql://phone_user:phone_password@mysql:3306/phone_store
       - ADMIN_DEFAULT_PASSWORD=adadad
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY}
+      - RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY}
     volumes:
       - .:/app
     depends_on:

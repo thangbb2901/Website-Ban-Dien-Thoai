@@ -151,7 +151,9 @@ app.config['PRODUCT_UPLOAD_FOLDER'] = PRODUCT_UPLOAD_FOLDER
 app.config['BANNER_UPLOAD_FOLDER'] = BANNER_UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 OTP_TTL_SECONDS = 600
-LOGIN_CAPTCHA_TTL_SECONDS = 300
+RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '').strip()
+RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '').strip()
+RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify'
 
 for upload_dir in (PRODUCT_UPLOAD_FOLDER, BANNER_UPLOAD_FOLDER):
     if not os.path.exists(upload_dir):
@@ -285,25 +287,33 @@ def clear_otp_session(session_key):
     session.pop(session_key, None)
     session.modified = True
 
-def create_login_captcha():
-    left = secrets.randbelow(9) + 1
-    right = secrets.randbelow(9) + 1
-    session['login_captcha'] = {
-        "answer": str(left + right),
-        "question": f"{left} + {right}",
-        "expires_at": (datetime.datetime.utcnow() + datetime.timedelta(seconds=LOGIN_CAPTCHA_TTL_SECONDS)).timestamp()
-    }
-    session.modified = True
-    return session['login_captcha']['question']
+def verify_google_recaptcha(token):
+    if not RECAPTCHA_SITE_KEY or not RECAPTCHA_SECRET_KEY:
+        return False, "Chưa cấu hình Google reCAPTCHA."
+    if not token:
+        return False, "Vui lòng xác nhận bạn không phải robot."
 
-def verify_login_captcha(value):
-    captcha_data = session.pop('login_captcha', None)
-    session.modified = True
-    if not captcha_data:
-        return False
-    if captcha_data.get("expires_at", 0) < datetime.datetime.utcnow().timestamp():
-        return False
-    return str(value or '').strip() == captcha_data.get("answer")
+    try:
+        response = requests.post(
+            RECAPTCHA_VERIFY_URL,
+            data={
+                "secret": RECAPTCHA_SECRET_KEY,
+                "response": token,
+                "remoteip": request.remote_addr
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+        result = response.json()
+    except requests.RequestException as e:
+        logging.warning(f"Lỗi gọi Google reCAPTCHA: {e}")
+        return False, "Không thể xác minh reCAPTCHA lúc này."
+
+    if not result.get("success"):
+        logging.warning(f"Google reCAPTCHA thất bại: {result.get('error-codes', [])}")
+        return False, "Xác nhận reCAPTCHA không hợp lệ hoặc đã hết hạn."
+
+    return True, None
 
 def send_otp_email(email_to, otp_code, purpose_text="xác thực"):
     sender_email = "thptckb1@gmail.com"
@@ -980,26 +990,27 @@ def delete_user_api(username):
         if conn:
             conn.close()
 
-@app.route('/api/login-captcha', methods=['GET'])
-def login_captcha_api():
-    """Tạo câu hỏi xác nhận không phải robot cho form đăng nhập."""
-    question = create_login_captcha()
+@app.route('/api/recaptcha-config', methods=['GET'])
+def recaptcha_config_api():
+    """Trả site key để frontend render Google reCAPTCHA."""
     return jsonify({
-        "question": question,
-        "message": "Vui lòng nhập kết quả phép tính để xác nhận bạn không phải robot."
+        "site_key": RECAPTCHA_SITE_KEY,
+        "enabled": bool(RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY)
     }), 200
 
 @app.route('/api/login', methods=['POST'])
 def login_api():
     """Xử lý đăng nhập người dùng và admin."""
     data = request.json
-    if not data or 'username' not in data or 'pass' not in data or 'captcha_answer' not in data:
+    if not data or 'username' not in data or 'pass' not in data or 'recaptcha_token' not in data:
         security_events.labels(event_type='invalid_request').inc()
-        return jsonify({"error": "Thiếu thông tin đăng nhập hoặc mã xác nhận."}), 400
+        return jsonify({"error": "Thiếu thông tin đăng nhập hoặc reCAPTCHA."}), 400
 
-    if not verify_login_captcha(data.get('captcha_answer')):
+    recaptcha_ok, recaptcha_error = verify_google_recaptcha(data.get('recaptcha_token'))
+    if not recaptcha_ok:
         security_events.labels(event_type='invalid_request').inc()
-        return jsonify({"error": "Mã xác nhận không đúng hoặc đã hết hạn."}), 400
+        return jsonify({"error": recaptcha_error}), 400
+
 
     username = data['username'].strip()
     password = data['pass']

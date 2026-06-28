@@ -19,6 +19,17 @@ Chức năng **ADMIN**:
 - Danh sách **khách hàng**, tìm kiếm/lọc, chỉnh sửa/thêm/xoá/khoá khác hàng
 - Danh sách **banner**, thêm,xóa, chỉnh sửa bannerbanner
 
+## Google reCAPTCHA
+
+Trang đăng nhập dùng Google reCAPTCHA v2 checkbox. Tạo key tại Google reCAPTCHA Admin Console, chọn loại **reCAPTCHA v2 - I'm not a robot Checkbox**, thêm domain đang chạy website, rồi cấu hình biến môi trường:
+
+```env
+RECAPTCHA_SITE_KEY=site_key_cua_ban
+RECAPTCHA_SECRET_KEY=secret_key_cua_ban
+```
+
+Nếu chạy bằng Docker Compose, các biến này sẽ được truyền vào service `web` từ file `.env`.
+
 ## Admin Account: 
 + username: admin
 + password: adadad

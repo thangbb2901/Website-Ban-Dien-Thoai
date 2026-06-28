@@ -234,47 +234,23 @@
     margin: -4px 0 18px 0;
 }
 
-.captcha-question {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    background: #f8fafc;
-    color: #334155;
+.google-captcha-wrap {
+    min-height: 78px;
 }
 
-.captcha-question span {
+.captcha-status {
+    min-height: 18px;
+    margin-bottom: 8px;
+    color: #64748b;
     font-size: 0.9rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 
-.captcha-question strong {
-    min-width: 56px;
-    text-align: center;
-    font-size: 1.1rem;
-    color: #0f172a;
+#loginRecaptcha {
+    min-height: 78px;
 }
 
-.captcha-refresh {
-    width: 34px;
-    height: 34px;
-    border: 0;
-    border-radius: 8px;
-    background: #e0f2fe;
-    color: #0369a1;
-    cursor: pointer;
-}
 
-.captcha-refresh:hover {
-    background: #bae6fd;
-}
-
-.captcha-answer-wrap {
-    margin: 12px 0 0 0;
-}
 /* Nút Submit chính (Glowing Gradient 3D) */
 .taikhoan .button {
     width: 100%;

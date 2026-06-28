@@ -406,37 +406,76 @@ async function signUp(form) {
     // Không cần return false
 }
 
-async function refreshLoginCaptcha() {
-    const questionBox = document.getElementById('loginCaptchaQuestion');
-    const captchaInput = document.querySelector('form[name="loginForm"] input[name="captcha_answer"]');
-    if (!questionBox) return;
+let loginRecaptchaWidgetId = null;
+let loginRecaptchaScriptPromise = null;
 
-    questionBox.textContent = 'Đang tải...';
+function loadGoogleRecaptchaScript() {
+    if (window.grecaptcha) return Promise.resolve();
+    if (loginRecaptchaScriptPromise) return loginRecaptchaScriptPromise;
+
+    loginRecaptchaScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Không tải được Google reCAPTCHA.'));
+        document.head.appendChild(script);
+    });
+
+    return loginRecaptchaScriptPromise;
+}
+
+async function refreshLoginCaptcha() {
+    const captchaBox = document.getElementById('loginRecaptcha');
+    const statusBox = document.getElementById('loginRecaptchaStatus');
+    if (!captchaBox) return;
+
+    loginRecaptchaWidgetId = null;
+    captchaBox.innerHTML = '';
+    if (statusBox) statusBox.textContent = 'Đang tải reCAPTCHA...';
+
     try {
-        const response = await fetch('/api/login-captcha', { credentials: 'include' });
+        const response = await fetch('/api/recaptcha-config', { credentials: 'include' });
         const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Không tải được mã xác nhận.');
+        if (!response.ok || !data.enabled || !data.site_key) {
+            throw new Error(data.error || 'Chưa cấu hình Google reCAPTCHA.');
         }
-        questionBox.textContent = data.question;
-        if (captchaInput) captchaInput.value = '';
+
+        await loadGoogleRecaptchaScript();
+        loginRecaptchaWidgetId = grecaptcha.render(captchaBox, {
+            sitekey: data.site_key
+        });
+        if (statusBox) statusBox.textContent = '';
     } catch (error) {
-        questionBox.textContent = 'Lỗi';
+        if (statusBox) statusBox.textContent = error.message || 'Không tải được Google reCAPTCHA.';
         if (typeof addAlertBox === 'function') {
-            addAlertBox(error.message || 'Không tải được mã xác nhận.', '#aa0000', '#fff', 4000);
+            addAlertBox(error.message || 'Không tải được Google reCAPTCHA.', '#aa0000', '#fff', 4000);
         }
     }
 }
+
+function getLoginRecaptchaToken() {
+    if (!window.grecaptcha || loginRecaptchaWidgetId === null) return '';
+    return grecaptcha.getResponse(loginRecaptchaWidgetId);
+}
+
+function resetLoginRecaptcha() {
+    if (window.grecaptcha && loginRecaptchaWidgetId !== null) {
+        grecaptcha.reset(loginRecaptchaWidgetId);
+    }
+}
+
+
 // Hàm đăng nhập (không cần `return false` ở cuối nữa)
 // Hãy thay thế toàn bộ hàm logIn cũ của bạn bằng hàm này.
 function logIn(form) {
     var username = form.username.value.trim();
     var pass = form.pass.value;
-    var captcha_answer = form.captcha_answer ? form.captcha_answer.value.trim() : '';
+    var recaptcha_token = getLoginRecaptchaToken();
 
-    if (!captcha_answer) {
-        alert('Vui lòng nhập mã xác nhận không phải robot.');
-        if (form.captcha_answer) form.captcha_answer.focus();
+    if (!recaptcha_token) {
+        alert('Vui lòng xác nhận bạn không phải robot.');
         return false;
     }
 
@@ -446,7 +485,7 @@ function logIn(form) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ username, pass, captcha_answer })
+        body: JSON.stringify({ username, pass, recaptcha_token })
     })
         .then(async response => {
             const data = await response.json();
@@ -474,7 +513,7 @@ function logIn(form) {
             // Hiển thị bất kỳ lỗi nào từ máy chủ hoặc lỗi mạng.
             alert('Lỗi đăng nhập: ' + error.message);
             console.error('Lỗi khi đăng nhập:', error);
-            refreshLoginCaptcha();
+            resetLoginRecaptcha();
             if (form.username) form.username.focus();
         });
 
@@ -1153,18 +1192,9 @@ function addContainTaiKhoan() {
                             <label>Mật khẩu <span class="req">*</span></label>
                             <input name="pass" type="password" required autocomplete="off" />
                         </div>
-                        <div class="captcha-wrap">
-                            <div class="captcha-question">
-                                <span>Xác nhận không phải robot</span>
-                                <strong id="loginCaptchaQuestion">Đang tải...</strong>
-                                <button type="button" class="captcha-refresh" onclick="refreshLoginCaptcha()" aria-label="Đổi mã xác nhận">
-                                    <i class="fa fa-refresh"></i>
-                                </button>
-                            </div>
-                            <div class="field-wrap captcha-answer-wrap">
-                                <label>Kết quả <span class="req">*</span></label>
-                                <input name="captcha_answer" type="number" required autocomplete="off" inputmode="numeric" />
-                            </div>
+                        <div class="captcha-wrap google-captcha-wrap">
+                            <div id="loginRecaptchaStatus" class="captcha-status">Đang tải reCAPTCHA...</div>
+                            <div id="loginRecaptcha"></div>
                         </div>
                         <div class="forgot">
                             <a href="javascript:void(0);" onclick="showForgotPasswordForm();">Quên mật khẩu?</a>
