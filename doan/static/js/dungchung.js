@@ -410,15 +410,24 @@ let loginRecaptchaWidgetId = null;
 let loginRecaptchaScriptPromise = null;
 
 function loadGoogleRecaptchaScript() {
-    if (window.grecaptcha) return Promise.resolve();
+    if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+        return Promise.resolve(window.grecaptcha);
+    }
     if (loginRecaptchaScriptPromise) return loginRecaptchaScriptPromise;
 
     loginRecaptchaScriptPromise = new Promise((resolve, reject) => {
+        window.onLoginRecaptchaLoaded = () => {
+            if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+                resolve(window.grecaptcha);
+                return;
+            }
+            reject(new Error('Google reCAPTCHA chưa sẵn sàng. Vui lòng tải lại trang.'));
+        };
+
         const script = document.createElement('script');
-        script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
+        script.src = 'https://www.google.com/recaptcha/api.js?onload=onLoginRecaptchaLoaded&render=explicit';
         script.async = true;
         script.defer = true;
-        script.onload = resolve;
         script.onerror = () => reject(new Error('Không tải được Google reCAPTCHA.'));
         document.head.appendChild(script);
     });
@@ -442,8 +451,8 @@ async function refreshLoginCaptcha() {
             throw new Error(data.error || 'Chưa cấu hình Google reCAPTCHA.');
         }
 
-        await loadGoogleRecaptchaScript();
-        loginRecaptchaWidgetId = grecaptcha.render(captchaBox, {
+        const recaptcha = await loadGoogleRecaptchaScript();
+        loginRecaptchaWidgetId = recaptcha.render(captchaBox, {
             sitekey: data.site_key
         });
         if (statusBox) statusBox.textContent = '';
